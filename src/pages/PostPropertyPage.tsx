@@ -70,8 +70,14 @@ const PostPropertyPage = () => {
 
   const amenitiesList = [
     "Water Connection", "Electricity", "Road Access", "Compound Wall",
-    "Security", "Garden", "Parking", "Well", "Bore Well", "Trees"
+    "Security", "Garden", "Parking", "Well", "Bore Well", "Trees",
+    "Swimming Pool", "Gym", "Club House", "Children's Play Area",
+    "CCTV Surveillance", "Intercom", "Lift", "Power Backup",
+    "Waste Management", "Rainwater Harvesting", "Solar Panels",
+    "Jogging Track", "Basketball Court", "Tennis Court", "Badminton Court"
   ];
+
+  const [customAmenity, setCustomAmenity] = useState("");
 
   const handleAmenityChange = (amenity: string, checked: boolean) => {
     setFormData(prev => ({
@@ -188,7 +194,7 @@ const PostPropertyPage = () => {
         owner_id: user.id,
         is_available: true,
         category_id: null, // You can add category selection later
-        price_type: 'per_sqft'
+        price_type: 'total'
       };
 
       const { error } = await supabase
@@ -500,17 +506,45 @@ const PostPropertyPage = () => {
             <CardTitle className="text-lg">Amenities</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              {amenitiesList.map((amenity) => (
-                <div key={amenity} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={amenity}
-                    checked={formData.amenities.includes(amenity)}
-                    onCheckedChange={(checked) => handleAmenityChange(amenity, checked as boolean)}
-                  />
-                  <Label htmlFor={amenity} className="text-sm">{amenity}</Label>
-                </div>
-              ))}
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                {amenitiesList.map((amenity) => (
+                  <div key={amenity} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={amenity}
+                      checked={formData.amenities.includes(amenity)}
+                      onCheckedChange={(checked) => handleAmenityChange(amenity, checked as boolean)}
+                    />
+                    <Label htmlFor={amenity} className="text-sm">{amenity}</Label>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add custom amenity..."
+                  value={customAmenity}
+                  onChange={(e) => setCustomAmenity(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && customAmenity.trim()) {
+                      handleAmenityChange(customAmenity.trim(), true);
+                      setCustomAmenity("");
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    if (customAmenity.trim()) {
+                      handleAmenityChange(customAmenity.trim(), true);
+                      setCustomAmenity("");
+                    }
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

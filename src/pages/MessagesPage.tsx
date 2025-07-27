@@ -198,7 +198,7 @@ const MessagesPage = () => {
               </div>
 
               {/* Message Input */}
-              <div className="border-t border-border p-4">
+              <div className="border-t border-border p-4 mb-20">
                 <div className="flex items-center gap-2">
                   <Input
                     placeholder="Type your message..."
