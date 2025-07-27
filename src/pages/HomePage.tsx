@@ -15,9 +15,9 @@ import sampleFarmland from "@/assets/sample-farmland.jpg";
 const HomePage = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedDistrict, setSelectedDistrict] = useState("");
-  const [priceRange, setPriceRange] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all-types");
+  const [selectedDistrict, setSelectedDistrict] = useState("all-districts");
+  const [priceRange, setPriceRange] = useState("all-prices");
   const [showFilterModal, setShowFilterModal] = useState(false);
 
   const districts = [
@@ -103,7 +103,7 @@ const HomePage = () => {
                 <SelectValue placeholder="District" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Districts</SelectItem>
+                <SelectItem value="all-districts">All Districts</SelectItem>
                 {districts.map((district) => (
                   <SelectItem key={district} value={district}>{district}</SelectItem>
                 ))}
@@ -115,7 +115,7 @@ const HomePage = () => {
                 <SelectValue placeholder="Price Range" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Prices</SelectItem>
+                <SelectItem value="all-prices">All Prices</SelectItem>
                 <SelectItem value="0-1000000">Under ₹10L</SelectItem>
                 <SelectItem value="1000000-2500000">₹10L - ₹25L</SelectItem>
                 <SelectItem value="2500000-5000000">₹25L - ₹50L</SelectItem>
@@ -128,7 +128,7 @@ const HomePage = () => {
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Types</SelectItem>
+                <SelectItem value="all-types">All Types</SelectItem>
                 <SelectItem value="residential">Residential</SelectItem>
                 <SelectItem value="commercial">Commercial</SelectItem>
                 <SelectItem value="agricultural">Agricultural</SelectItem>
@@ -143,7 +143,7 @@ const HomePage = () => {
                 key={district}
                 variant={selectedDistrict === district ? "default" : "secondary"}
                 className="whitespace-nowrap cursor-pointer hover:bg-accent hover:text-white transition-colors"
-                onClick={() => setSelectedDistrict(selectedDistrict === district ? "" : district)}
+                onClick={() => setSelectedDistrict(selectedDistrict === district ? "all-districts" : district)}
               >
                 <MapPin className="h-3 w-3 mr-1" />
                 {district}
