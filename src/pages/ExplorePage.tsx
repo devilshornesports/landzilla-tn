@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Filter, Map, Grid3X3, Search, SlidersHorizontal, MapPin, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,9 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent } from "@/components/ui/card";
 import PropertyCard from "@/components/PropertyCard";
 import FilterModal from "@/components/FilterModal";
-import heroImage from "@/assets/hero-property.jpg";
-import sampleHouse from "@/assets/sample-house.jpg";
-import sampleFarmland from "@/assets/sample-farmland.jpg";
+import { supabase } from "@/integrations/supabase/client";
 
 const ExplorePage = () => {
   const [viewType, setViewType] = useState<"grid" | "map">("grid");
@@ -18,75 +16,42 @@ const ExplorePage = () => {
   const [selectedType, setSelectedType] = useState("");
   const [sortBy, setSortBy] = useState("newest");
   const [showFilterModal, setShowFilterModal] = useState(false);
+  const [properties, setProperties] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const districts = [
-    "Chennai", "Coimbatore", "Madurai", "Tiruchirappalli", "Salem",
-    "Tirunelveli", "Erode", "Vellore", "Thoothukudi", "Dindigul",
-    "Thanjavur", "Kanchipuram", "Tiruvannamalai", "Cuddalore", "Nagapattinam"
+    "Ariyalur", "Chengalpattu", "Chennai", "Coimbatore", "Cuddalore", "Dharmapuri", 
+    "Dindigul", "Erode", "Kallakurichi", "Kanchipuram", "Kanyakumari", "Karur", 
+    "Krishnagiri", "Madurai", "Mayiladuthurai", "Nagapattinam", "Namakkal", 
+    "Nilgiris", "Perambalur", "Pudukkottai", "Ramanathapuram", "Ranipet", 
+    "Salem", "Sivaganga", "Tenkasi", "Thanjavur", "Theni", "Thoothukudi", 
+    "Tiruchirappalli", "Tirunelveli", "Tirupattur", "Tiruppur", "Tiruvallur", 
+    "Tiruvannamalai", "Tiruvarur", "Vellore", "Viluppuram", "Virudhunagar"
   ];
 
-  const properties = [
-    {
-      id: "PROP-TN-20250727001",
-      title: "Premium Residential Plot",
-      district: "Chennai",
-      block: "A",
-      plotNo: "45",
-      price: 2500000,
-      area: "1200 Sqft",
-      image: heroImage,
-      status: "Available" as const,
-      type: "Residential"
-    },
-    {
-      id: "PROP-TN-20250727002",
-      title: "Modern Villa with Garden",
-      district: "Coimbatore",
-      block: "B",
-      plotNo: "12",
-      price: 4500000,
-      area: "2400 Sqft",
-      image: sampleHouse,
-      status: "Available" as const,
-      type: "Villa"
-    },
-    {
-      id: "PROP-TN-20250727003",
-      title: "Agricultural Farmland",
-      district: "Salem",
-      block: "C",
-      plotNo: "78",
-      price: 800000,
-      area: "2 Acres",
-      image: sampleFarmland,
-      status: "Booked" as const,
-      type: "Agricultural"
-    },
-    {
-      id: "PROP-TN-20250727004",
-      title: "Commercial Plot - Main Road",
-      district: "Madurai",
-      block: "A",
-      plotNo: "23",
-      price: 3200000,
-      area: "1800 Sqft",
-      image: heroImage,
-      status: "Available" as const,
-      type: "Commercial"
-    },
-    {
-      id: "PROP-TN-20250727005",
-      title: "Coconut Farm with Well",
-      district: "Erode",
-      block: "D",
-      plotNo: "156",
-      price: 1200000,
-      area: "3 Acres",
-      image: sampleFarmland,
-      status: "Available" as const,
-      type: "Agricultural"
+  useEffect(() => {
+    fetchProperties();
+  }, []);
+
+  const fetchProperties = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('properties')
+        .select(`
+          *,
+          profiles!properties_owner_id_fkey(full_name)
+        `)
+        .eq('is_available', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setProperties(data || []);
+    } catch (error) {
+      console.error('Error fetching properties:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
   const propertyTypes = ["All", "Residential", "Commercial", "Agricultural", "Villa"];
 
@@ -212,15 +177,36 @@ const ExplorePage = () => {
 
       {/* Content */}
       <div className="px-4 py-4">
-        {viewType === "grid" ? (
+        {loading ? (
           <div className="space-y-4">
-            {properties.map((property) => (
-              <PropertyCard
-                key={property.id}
-                {...property}
-                onClick={() => console.log("Navigate to property details")}
-              />
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="animate-pulse bg-muted rounded-xl h-32"></div>
             ))}
+          </div>
+        ) : viewType === "grid" ? (
+          <div className="space-y-4">
+            {properties.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No properties found</p>
+              </div>
+            ) : (
+              properties.map((property) => (
+                <PropertyCard
+                  key={property.id}
+                  id={property.id}
+                  title={property.title}
+                  district={property.district}
+                  block="N/A"
+                  plotNo="N/A"
+                  price={property.price}
+                  area={property.size_sqft ? `${property.size_sqft} Sqft` : "Size not specified"}
+                  image={property.images?.[0] || "/placeholder.svg"}
+                  status={property.is_available ? "Available" : "Booked"}
+                  type="Property"
+                  onClick={() => console.log("Navigate to property details")}
+                />
+              ))
+            )}
           </div>
         ) : (
           <div className="bg-muted rounded-xl h-96 flex items-center justify-center">

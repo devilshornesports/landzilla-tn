@@ -51,8 +51,10 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function AppRoutes() {
+  const { user } = useAuth();
+
   return (
-    <div className="pb-16 md:pb-0">
+    <div className={user ? "pb-16 md:pb-0" : ""}>
       <Routes>
         <Route path="/auth" element={
           <PublicRoute>
@@ -111,7 +113,7 @@ function AppRoutes() {
         } />
         <Route path="*" element={<NotFound />} />
       </Routes>
-      <BottomNavigation />
+      {user && <BottomNavigation />}
     </div>
   );
 }

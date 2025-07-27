@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Camera, MapPin, Upload, Save, Plus, Trash2, IndianRupee } from "lucide-react";
+import { Camera, MapPin, Upload, Save, Plus, Trash2, IndianRupee, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,10 +7,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 const PostPropertyPage = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const [showPreview, setShowPreview] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -37,8 +44,13 @@ const PostPropertyPage = () => {
   ]);
 
   const districts = [
-    "Chennai", "Coimbatore", "Madurai", "Tiruchirappalli", "Salem",
-    "Tirunelveli", "Erode", "Vellore", "Thoothukudi", "Dindigul"
+    "Ariyalur", "Chengalpattu", "Chennai", "Coimbatore", "Cuddalore", "Dharmapuri", 
+    "Dindigul", "Erode", "Kallakurichi", "Kanchipuram", "Kanyakumari", "Karur", 
+    "Krishnagiri", "Madurai", "Mayiladuthurai", "Nagapattinam", "Namakkal", 
+    "Nilgiris", "Perambalur", "Pudukkottai", "Ramanathapuram", "Ranipet", 
+    "Salem", "Sivaganga", "Tenkasi", "Thanjavur", "Theni", "Thoothukudi", 
+    "Tiruchirappalli", "Tirunelveli", "Tirupattur", "Tiruppur", "Tiruvallur", 
+    "Tiruvannamalai", "Tiruvarur", "Vellore", "Viluppuram", "Virudhunagar"
   ];
 
   const areaUnits = [
@@ -107,16 +119,122 @@ const PostPropertyPage = () => {
     return `PROP-TN-${year}${month}${day}${random}`;
   };
 
+  const handleImageUpload = async (files: FileList) => {
+    if (!user) return;
+    
+    setUploading(true);
+    const imageUrls: string[] = [];
+
+    try {
+      for (const file of Array.from(files)) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
+        const filePath = `${user.id}/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('property-images')
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data } = supabase.storage
+          .from('property-images')
+          .getPublicUrl(filePath);
+
+        imageUrls.push(data.publicUrl);
+      }
+
+      setUploadedImages(prev => [...prev, ...imageUrls]);
+      toast({
+        title: "Images uploaded successfully!",
+        description: `${imageUrls.length} image(s) uploaded.`,
+      });
+    } catch (error) {
+      console.error('Error uploading images:', error);
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload images. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const propertyId = generatePropertyId();
-    
-    toast({
-      title: "Property Posted Successfully! 🎉",
-      description: `Your property ID is ${propertyId}. It will be reviewed and published soon.`,
-    });
-    
-    console.log("Property submitted:", { ...formData, blocks, propertyId });
+    setShowPreview(true);
+  };
+
+  const handleConfirmPost = async () => {
+    if (!user) return;
+
+    try {
+      // Calculate average price from blocks
+      const totalPrice = blocks.reduce((sum, block) => {
+        const price = parseFloat(block.pricePerSqft) * parseFloat(block.area);
+        return sum + (isNaN(price) ? 0 : price);
+      }, 0);
+      const avgPrice = totalPrice / blocks.length;
+
+      const propertyData = {
+        title: formData.title,
+        description: formData.description,
+        district: formData.district,
+        location: formData.location,
+        price: avgPrice,
+        images: uploadedImages,
+        amenities: formData.amenities,
+        owner_id: user.id,
+        is_available: true,
+        category_id: null, // You can add category selection later
+        price_type: 'per_sqft'
+      };
+
+      const { error } = await supabase
+        .from('properties')
+        .insert(propertyData);
+
+      if (error) throw error;
+
+      toast({
+        title: "Property Posted Successfully! 🎉",
+        description: "Your property is now live and visible to everyone.",
+      });
+
+      setShowPreview(false);
+      // Reset form
+      setFormData({
+        title: "",
+        description: "",
+        district: "",
+        location: "",
+        facing: "",
+        propertyType: "",
+        ownerName: "",
+        ownerPhone: "",
+        amenities: [],
+      });
+      setBlocks([{
+        id: 1,
+        blockId: "A",
+        blockName: "Block A",
+        totalPlots: 50,
+        area: "",
+        areaUnit: "sqft",
+        pricePerSqft: "",
+        totalPrice: ""
+      }]);
+      setUploadedImages([]);
+      
+    } catch (error) {
+      console.error('Error posting property:', error);
+      toast({
+        title: "Failed to post property",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -159,6 +277,44 @@ const PostPropertyPage = () => {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Photo Upload - First in Basic Information */}
+            <div>
+              <Label>Property Photos *</Label>
+              <div className="border-2 border-dashed border-border rounded-xl p-6 text-center">
+                <Camera className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground mb-2">Upload up to 15 photos</p>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={(e) => e.target.files && handleImageUpload(e.target.files)}
+                  className="hidden"
+                  id="image-upload"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => document.getElementById('image-upload')?.click()}
+                  disabled={uploading}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {uploading ? "Uploading..." : "Choose Photos"}
+                </Button>
+                {uploadedImages.length > 0 && (
+                  <div className="mt-4 grid grid-cols-3 gap-2">
+                    {uploadedImages.map((url, index) => (
+                      <img
+                        key={index}
+                        src={url}
+                        alt={`Property ${index + 1}`}
+                        className="w-full h-20 object-cover rounded"
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div>
@@ -388,28 +544,70 @@ const PostPropertyPage = () => {
           </CardContent>
         </Card>
 
-        {/* Photo Upload */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Property Photos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="border-2 border-dashed border-border rounded-xl p-8 text-center">
-              <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground mb-2">Upload up to 15 photos</p>
-              <Button variant="outline">
-                <Upload className="h-4 w-4 mr-2" />
-                Choose Photos
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Submit Button */}
         <Button type="submit" className="w-full h-12 text-lg bg-accent hover:bg-accent/90">
-          <Save className="h-5 w-5 mr-2" />
-          📤 Post My Property
+          <Eye className="h-5 w-5 mr-2" />
+          Preview Property
         </Button>
+
+        {/* Preview Modal */}
+        <Dialog open={showPreview} onOpenChange={setShowPreview}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Property Preview</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              {uploadedImages.length > 0 && (
+                <div className="grid grid-cols-2 gap-2">
+                  {uploadedImages.slice(0, 4).map((url, index) => (
+                    <img
+                      key={index}
+                      src={url}
+                      alt={`Property ${index + 1}`}
+                      className="w-full h-32 object-cover rounded"
+                    />
+                  ))}
+                </div>
+              )}
+              <div>
+                <h3 className="text-xl font-bold">{formData.title}</h3>
+                <p className="text-muted-foreground">{formData.district}, {formData.location}</p>
+              </div>
+              <p className="text-sm">{formData.description}</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="font-semibold">Property Type:</p>
+                  <p>{formData.propertyType}</p>
+                </div>
+                <div>
+                  <p className="font-semibold">Facing:</p>
+                  <p>{formData.facing}</p>
+                </div>
+              </div>
+              {formData.amenities.length > 0 && (
+                <div>
+                  <p className="font-semibold">Amenities:</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {formData.amenities.map((amenity) => (
+                      <span key={amenity} className="bg-secondary px-2 py-1 rounded text-xs">
+                        {amenity}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="flex gap-2 pt-4">
+                <Button onClick={handleConfirmPost} className="flex-1">
+                  Confirm & Post Property
+                </Button>
+                <Button variant="outline" onClick={() => setShowPreview(false)}>
+                  Edit More
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </form>
     </div>
   );
