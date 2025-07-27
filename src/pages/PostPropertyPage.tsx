@@ -194,7 +194,7 @@ const PostPropertyPage = () => {
         owner_id: user.id,
         is_available: true,
         category_id: null, // You can add category selection later
-        price_type: 'total'
+        price_type: 'one_time'
       };
 
       const { error } = await supabase
