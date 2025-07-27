@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -197,10 +197,15 @@ const MyListingsPage = () => {
                                   <Eye className="h-4 w-4 mr-2" />
                                   View Property
                                 </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => navigate(`/edit-property/${property.id}`)}>
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Edit Property
+                                </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => viewPropertyBookings(property)}>
                                   <Users className="h-4 w-4 mr-2" />
                                   View Bookings
                                 </DropdownMenuItem>
+                                <DropdownMenuSeparator />
                                 <DropdownMenuItem 
                                   onClick={() => togglePropertyStatus(property.id, property.is_available)}
                                 >

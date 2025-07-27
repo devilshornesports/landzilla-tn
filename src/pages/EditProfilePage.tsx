@@ -58,14 +58,13 @@ const EditProfilePage = () => {
     try {
       const { error } = await supabase
         .from('profiles')
-        .upsert({
-          user_id: user.id,
+        .update({
           full_name: formData.full_name,
           phone: formData.phone,
           bio: formData.bio,
           user_type: formData.user_type,
-          updated_at: new Date().toISOString()
-        });
+        })
+        .eq('user_id', user.id);
 
       if (error) throw error;
 
