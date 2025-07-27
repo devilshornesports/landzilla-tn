@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          activity_type: string
+          created_at: string
+          description: string
+          id: string
+          property_id: string | null
+          user_id: string
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string
+          description: string
+          id?: string
+          property_id?: string | null
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string
+          description?: string
+          id?: string
+          property_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       bookings: {
         Row: {
           created_at: string
@@ -302,6 +329,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      property_views: {
+        Row: {
+          id: string
+          ip_address: string | null
+          property_id: string
+          user_agent: string | null
+          user_id: string | null
+          viewed_at: string
+        }
+        Insert: {
+          id?: string
+          ip_address?: string | null
+          property_id: string
+          user_agent?: string | null
+          user_id?: string | null
+          viewed_at?: string
+        }
+        Update: {
+          id?: string
+          ip_address?: string | null
+          property_id?: string
+          user_agent?: string | null
+          user_id?: string | null
+          viewed_at?: string
+        }
+        Relationships: []
+      }
+      saved_properties: {
+        Row: {
+          created_at: string
+          id: string
+          property_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          property_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          property_id?: string
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {

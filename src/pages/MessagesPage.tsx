@@ -1,76 +1,142 @@
-import { useState } from "react";
-import { MessageSquare, Send, Phone, Mail, Shield } from "lucide-react";
+import { useState, useEffect } from "react";
+import { MessageSquare, Send, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const MessagesPage = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const conversations = [
-    {
-      id: "1",
-      name: "Rajesh Kumar",
-      property: "Premium Residential Plot - Chennai",
-      lastMessage: "Is this property still available?",
-      time: "2m ago",
-      unread: 2,
-      propertyId: "PROP-TN-20250727001",
-      isVerified: true
-    },
-    {
-      id: "2", 
-      name: "Priya Sharma",
-      property: "Agricultural Farmland - Salem",
-      lastMessage: "Can we schedule a site visit?",
-      time: "1h ago",
-      unread: 0,
-      propertyId: "PROP-TN-20250727003",
-      isVerified: true
-    },
-    {
-      id: "3",
-      name: "Muthu Vel",
-      property: "Commercial Plot - Madurai", 
-      lastMessage: "What documents are required?",
-      time: "3h ago",
-      unread: 1,
-      propertyId: "PROP-TN-20250727004",
-      isVerified: false
+  useEffect(() => {
+    if (user) {
+      fetchConversations();
     }
-  ];
+  }, [user]);
 
-  const chatMessages = [
-    {
-      id: "1",
-      sender: "Rajesh Kumar",
-      message: "Hello! I'm interested in your property listing.",
-      time: "10:30 AM",
-      isOwn: false
-    },
-    {
-      id: "2", 
-      sender: "You",
-      message: "Hi Rajesh! Thanks for your interest. The property is still available.",
-      time: "10:35 AM",
-      isOwn: true
-    },
-    {
-      id: "3",
-      sender: "Rajesh Kumar", 
-      message: "Is this property still available?",
-      time: "10:45 AM",
-      isOwn: false
+  useEffect(() => {
+    if (selectedChat) {
+      fetchMessages(selectedChat);
+      // Set up real-time subscription for messages
+      const channel = supabase
+        .channel('messages')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `conversation_id=eq.${selectedChat}`
+          },
+          (payload) => {
+            setMessages(prev => [...prev, payload.new]);
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
-  ];
+  }, [selectedChat]);
 
-  const handleSendMessage = () => {
-    if (message.trim()) {
-      console.log("Send message:", message);
+  const fetchConversations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('conversations')
+        .select(`
+          *,
+          properties(title),
+          participant_1_profile:profiles!conversations_participant_1_fkey(full_name, is_verified),
+          participant_2_profile:profiles!conversations_participant_2_fkey(full_name, is_verified),
+          last_message:messages!conversations_last_message_id_fkey(content, created_at)
+        `)
+        .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
+        .order('last_activity', { ascending: false });
+
+      if (error) throw error;
+
+      const formattedConversations = data.map(conv => {
+        const otherParticipant = conv.participant_1 === user.id 
+          ? conv.participant_2_profile 
+          : conv.participant_1_profile;
+        
+        return {
+          id: conv.id,
+          name: otherParticipant?.full_name || 'Unknown User',
+          property: conv.properties?.title || 'Property Discussion',
+          lastMessage: conv.last_message?.content || 'No messages yet',
+          time: conv.last_message?.created_at ? new Date(conv.last_message.created_at).toLocaleTimeString() : '',
+          unread: 0, // TODO: Implement unread count
+          isVerified: otherParticipant?.is_verified || false
+        };
+      });
+
+      setConversations(formattedConversations);
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchMessages = async (conversationId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      const formattedMessages = data.map(msg => ({
+        id: msg.id,
+        sender: msg.sender_id === user.id ? 'You' : 'Other',
+        message: msg.content,
+        time: new Date(msg.created_at).toLocaleTimeString(),
+        isOwn: msg.sender_id === user.id
+      }));
+
+      setMessages(formattedMessages);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!message.trim() || !selectedChat) return;
+
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: selectedChat,
+          sender_id: user.id,
+          content: message.trim(),
+          message_type: 'text'
+        });
+
+      if (error) throw error;
+
       setMessage("");
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send message",
+        variant: "destructive"
+      });
     }
   };
 
@@ -85,8 +151,21 @@ const MessagesPage = () => {
         {/* Conversations List */}
         <div className={`${selectedChat ? 'hidden md:block' : 'block'} w-full md:w-1/3 border-r border-border`}>
           <div className="p-4">
-            <div className="space-y-3">
-              {conversations.map((conversation) => (
+            {loading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="animate-pulse bg-muted rounded-lg h-16"></div>
+                ))}
+              </div>
+            ) : conversations.length === 0 ? (
+              <div className="text-center py-8">
+                <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No conversations yet</p>
+                <p className="text-sm text-muted-foreground">Start messaging property owners to see conversations here</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {conversations.map((conversation) => (
                 <Card
                   key={conversation.id}
                   className={`cursor-pointer transition-all hover:shadow-md ${
@@ -133,8 +212,9 @@ const MessagesPage = () => {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -160,21 +240,12 @@ const MessagesPage = () => {
                       </p>
                     </div>
                   </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm">
-                      <Phone className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <Mail className="h-4 w-4" />
-                    </Button>
-                  </div>
                 </div>
               </div>
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {chatMessages.map((msg) => (
+                {messages.map((msg) => (
                   <div
                     key={msg.id}
                     className={`flex ${msg.isOwn ? 'justify-end' : 'justify-start'}`}

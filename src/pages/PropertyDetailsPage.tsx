@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, Heart, Share2, MapPin, User, Phone, Calendar, IndianRupee, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate, useParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import BlockBookingModal from "@/components/BlockBookingModal";
 import ImageCarousel from "@/components/ImageCarousel";
 import heroImage from "@/assets/hero-property.jpg";
@@ -15,96 +17,214 @@ const PropertyDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [property, setProperty] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Mock property data - in real app, fetch based on id
-  const property = {
-    id: "PROP-TN-20250727001",
-    title: "Premium Residential Plot in Anna Nagar",
-    district: "Chennai",
-    location: "Anna Nagar West, Chennai",
-    description: "Beautiful residential plot in prime location with all amenities. Perfect for building your dream home. Well-connected to schools, hospitals, and shopping centers.",
-    images: [heroImage, sampleHouse, sampleFarmland, heroImage, sampleHouse],
-    owner: {
-      name: "Rajesh Kumar",
-      phone: "+91 98765 43210",
-      verified: true
-    },
-    propertyType: "Residential Plot",
-    facing: "East",
-    amenities: ["Water Connection", "Electricity", "Road Access", "Security", "Garden", "Parking"],
-    blocks: [
-      {
-        blockId: "A",
-        blockName: "Block A - Premium",
-        totalPlots: 50,
-        availablePlots: 25,
-        area: "1200 sqft",
-        pricePerSqft: 2500,
-        totalPrice: 3000000,
-        status: "Available",
-        plots: Array.from({ length: 50 }, (_, i) => ({
-          plotNo: i + 1,
-          status: i < 25 ? "Available" : "Booked",
-          bookedBy: i >= 25 ? `Buyer ${i - 24}` : null
-        }))
-      },
-      {
-        blockId: "B",
-        blockName: "Block B - Standard",
-        totalPlots: 40,
-        availablePlots: 30,
-        area: "1000 sqft",
-        pricePerSqft: 2200,
-        totalPrice: 2200000,
-        status: "Available",
-        plots: Array.from({ length: 40 }, (_, i) => ({
-          plotNo: i + 1,
-          status: i < 30 ? "Available" : "Booked",
-          bookedBy: i >= 30 ? `Buyer ${i - 29}` : null
-        }))
-      },
-      {
-        blockId: "C",
-        blockName: "Block C - Economy",
-        totalPlots: 60,
-        availablePlots: 45,
-        area: "800 sqft",
-        pricePerSqft: 1800,
-        totalPrice: 1440000,
-        status: "Available",
-        plots: Array.from({ length: 60 }, (_, i) => ({
-          plotNo: i + 1,
-          status: i < 45 ? "Available" : "Booked",
-          bookedBy: i >= 45 ? `Buyer ${i - 44}` : null
-        }))
+  useEffect(() => {
+    if (id) {
+      fetchProperty();
+      recordPropertyView();
+      if (user) {
+        checkSavedStatus();
       }
-    ]
+    }
+  }, [id, user]);
+
+  const fetchProperty = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('properties')
+        .select(`
+          *,
+          profiles!properties_owner_id_fkey(full_name, phone, is_verified)
+        `)
+        .eq('id', id)
+        .maybeSingle();
+
+      if (error) throw error;
+      
+      if (data) {
+        setProperty({
+          ...data,
+          owner: {
+            name: data.profiles?.full_name || 'Property Owner',
+            phone: data.profiles?.phone || 'N/A',
+            verified: data.profiles?.is_verified || false
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching property:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load property details",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const recordPropertyView = async () => {
+    try {
+      await supabase
+        .from('property_views')
+        .insert({
+          property_id: id,
+          user_id: user?.id || null,
+          ip_address: null,
+          user_agent: navigator.userAgent
+        });
+    } catch (error) {
+      console.error('Error recording view:', error);
+    }
+  };
+
+  const checkSavedStatus = async () => {
+    if (!user || !id) return;
+    
+    try {
+      const { data } = await supabase
+        .from('saved_properties')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('property_id', id)
+        .maybeSingle();
+      
+      setIsSaved(!!data);
+    } catch (error) {
+      console.error('Error checking saved status:', error);
+    }
   };
 
   const handleBooking = () => {
+    if (!user) {
+      toast({
+        title: "Please log in",
+        description: "You need to be logged in to book properties",
+        variant: "destructive"
+      });
+      return;
+    }
     setIsBookingModalOpen(true);
   };
 
-  const handleSave = () => {
-    setIsSaved(!isSaved);
-    toast({
-      title: isSaved ? "Removed from Wishlist" : "Added to Wishlist",
-      description: isSaved ? "Property removed from your saved items" : "Property saved to your wishlist",
-    });
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background pb-20 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 border-2 border-accent border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading property details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!property) {
+    return (
+      <div className="min-h-screen bg-background pb-20 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-2">Property Not Found</h2>
+          <p className="text-muted-foreground mb-4">The property you're looking for doesn't exist or has been removed.</p>
+          <Button onClick={() => navigate('/explore')}>
+            Browse Properties
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const handleSave = async () => {
+    if (!user) {
+      toast({
+        title: "Please log in",
+        description: "You need to be logged in to save properties",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      if (isSaved) {
+        await supabase
+          .from('saved_properties')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('property_id', id);
+        
+        setIsSaved(false);
+        toast({
+          title: "Removed from Wishlist",
+          description: "Property removed from your saved items"
+        });
+      } else {
+        await supabase
+          .from('saved_properties')
+          .insert({
+            user_id: user.id,
+            property_id: id
+          });
+        
+        setIsSaved(true);
+        toast({
+          title: "Added to Wishlist",
+          description: "Property saved to your wishlist"
+        });
+      }
+    } catch (error) {
+      console.error('Error saving property:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update wishlist",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleShare = () => {
-    navigator.share({
-      title: property.title,
-      text: `Check out this property: ${property.title}`,
-      url: window.location.href,
-    });
+  const handleShare = async () => {
+    const shareUrl = window.location.href;
+    const shareText = `Check out this property: ${property?.title}`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: property?.title,
+          text: shareText,
+          url: shareUrl,
+        });
+      } catch (error) {
+        console.log('Share cancelled');
+      }
+    } else {
+      // Fallback to clipboard
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        toast({
+          title: "Link Copied!",
+          description: "Property link copied to clipboard"
+        });
+      } catch (error) {
+        toast({
+          title: "Share Link",
+          description: shareUrl,
+        });
+      }
+    }
   };
 
   const handleMessage = () => {
-    navigate(`/messages?propertyId=${property.id}&sellerId=${property.owner.name}`);
+    if (!user) {
+      toast({
+        title: "Please log in",
+        description: "You need to be logged in to message property owners",
+        variant: "destructive"
+      });
+      return;
+    }
+    navigate(`/messages?propertyId=${property?.id}&sellerId=${property?.owner_id}`);
   };
 
   return (
@@ -127,7 +247,7 @@ const PropertyDetailsPage = () => {
       </div>
 
       {/* Image Carousel */}
-      <ImageCarousel images={property.images} />
+      <ImageCarousel images={property.images || [heroImage]} />
 
       {/* Property Info */}
       <div className="p-4 space-y-6">
@@ -139,52 +259,58 @@ const PropertyDetailsPage = () => {
             <span>{property.location}</span>
           </div>
           <div className="flex gap-2 mb-4">
-            <Badge variant="secondary">{property.propertyType}</Badge>
-            <Badge variant="outline">{property.facing} Facing</Badge>
+            <Badge variant="secondary">Property</Badge>
+            <Badge variant="outline">Premium Location</Badge>
           </div>
           <p className="text-muted-foreground leading-relaxed">{property.description}</p>
         </div>
 
-        {/* Blocks Available */}
+        {/* Property Details */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Available Blocks</CardTitle>
+            <CardTitle className="text-lg">Property Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {property.blocks.map((block) => (
-              <div key={block.blockId} className="border border-border rounded-lg p-4">
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h3 className="font-semibold text-foreground">{block.blockName}</h3>
-                    <p className="text-sm text-muted-foreground">{block.area} per plot</p>
-                  </div>
-                  <Badge variant={block.availablePlots > 0 ? "default" : "secondary"}>
-                    {block.availablePlots} / {block.totalPlots} Available
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-1">
-                      <IndianRupee className="h-4 w-4 text-accent" />
-                      <span className="text-lg font-bold text-accent">
-                        {block.totalPrice.toLocaleString('en-IN')}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      ₹{block.pricePerSqft.toLocaleString('en-IN')}/sqft
-                    </p>
-                  </div>
-                  <Button 
-                    size="sm" 
-                    disabled={block.availablePlots === 0}
-                    onClick={handleBooking}
-                    className="bg-accent hover:bg-accent/90"
-                  >
-                    {block.availablePlots === 0 ? 'Sold Out' : 'Book Now'}
-                  </Button>
-                </div>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-muted-foreground">Size:</span>
+                <span className="ml-2 font-medium">{property.size_sqft ? `${property.size_sqft} sqft` : 'Not specified'}</span>
               </div>
-            ))}
+              <div>
+                <span className="text-muted-foreground">Type:</span>
+                <span className="ml-2 font-medium">Property</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Bedrooms:</span>
+                <span className="ml-2 font-medium">{property.bedrooms || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Bathrooms:</span>
+                <span className="ml-2 font-medium">{property.bathrooms || 'N/A'}</span>
+              </div>
+            </div>
+            <div className="border-t pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-1">
+                    <IndianRupee className="h-5 w-5 text-accent" />
+                    <span className="text-2xl font-bold text-accent">
+                      {property.price?.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {property.price_type === 'per_day' ? 'per day' : 'total price'}
+                  </p>
+                </div>
+                <Button 
+                  onClick={handleBooking}
+                  className="bg-accent hover:bg-accent/90"
+                >
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Book Now
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -195,12 +321,16 @@ const PropertyDetailsPage = () => {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-3">
-              {property.amenities.map((amenity) => (
-                <div key={amenity} className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span className="text-sm text-foreground">{amenity}</span>
-                </div>
-              ))}
+              {property.amenities && property.amenities.length > 0 ? (
+                property.amenities.map((amenity: string) => (
+                  <div key={amenity} className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span className="text-sm text-foreground">{amenity}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-muted-foreground col-span-2">No amenities listed</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -239,11 +369,13 @@ const PropertyDetailsPage = () => {
         </Card>
       </div>
 
-      <BlockBookingModal 
-        isOpen={isBookingModalOpen}
-        onClose={() => setIsBookingModalOpen(false)}
-        property={property}
-      />
+      {property && (
+        <BlockBookingModal 
+          isOpen={isBookingModalOpen}
+          onClose={() => setIsBookingModalOpen(false)}
+          property={property}
+        />
+      )}
     </div>
   );
 };

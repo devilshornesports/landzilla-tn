@@ -201,9 +201,9 @@ const MyListingsPage = () => {
                                   <Edit className="h-4 w-4 mr-2" />
                                   Edit Property
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => viewPropertyBookings(property)}>
+                                <DropdownMenuItem onClick={() => navigate(`/booking-dashboard/${property.id}`)}>
                                   <Users className="h-4 w-4 mr-2" />
-                                  View Bookings
+                                  Booking Dashboard
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 

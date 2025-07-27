@@ -3,6 +3,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface PropertyCardProps {
   id: string;
@@ -32,6 +36,86 @@ const PropertyCard = ({
   onClick,
 }: PropertyCardProps) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [isSaved, setIsSaved] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      checkSavedStatus();
+    }
+  }, [user, id]);
+
+  const checkSavedStatus = async () => {
+    if (!user) return;
+    
+    try {
+      const { data } = await supabase
+        .from('saved_properties')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('property_id', id)
+        .maybeSingle();
+      
+      setIsSaved(!!data);
+    } catch (error) {
+      console.error('Error checking saved status:', error);
+    }
+  };
+
+  const handleSaveProperty = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) {
+      toast({
+        title: "Please log in",
+        description: "You need to be logged in to save properties",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (isSaved) {
+        // Remove from saved
+        await supabase
+          .from('saved_properties')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('property_id', id);
+        
+        setIsSaved(false);
+        toast({
+          title: "Removed from Wishlist",
+          description: "Property removed from your saved items"
+        });
+      } else {
+        // Add to saved
+        await supabase
+          .from('saved_properties')
+          .insert({
+            user_id: user.id,
+            property_id: id
+          });
+        
+        setIsSaved(true);
+        toast({
+          title: "Added to Wishlist",
+          description: "Property saved to your wishlist"
+        });
+      }
+    } catch (error) {
+      console.error('Error saving property:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update wishlist",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Available":
@@ -73,8 +157,10 @@ const PropertyCard = ({
           size="sm"
           variant="secondary"
           className="absolute top-3 left-3 h-8 w-8 p-0 bg-white/90 hover:bg-white"
+          onClick={handleSaveProperty}
+          disabled={loading}
         >
-          <Heart className="h-4 w-4" />
+          <Heart className={`h-4 w-4 ${isSaved ? 'fill-red-500 text-red-500' : ''}`} />
         </Button>
       </div>
       
