@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { User, Settings, Heart, Eye, MessageSquare, Plus, LogOut, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,61 +7,86 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PropertyCard from "@/components/PropertyCard";
 import { useNavigate } from "react-router-dom";
-import heroImage from "@/assets/hero-property.jpg";
-import sampleHouse from "@/assets/sample-house.jpg";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const ProfilePage = () => {
   const navigate = useNavigate();
-  const [userRole] = useState<"buyer" | "seller">("seller");
+  const { user, signOut } = useAuth();
+  const { toast } = useToast();
+  const [profile, setProfile] = useState<any>(null);
+  const [userProperties, setUserProperties] = useState<any[]>([]);
+  const [savedProperties, setSavedProperties] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const userStats = {
-    totalListings: 5,
-    totalViews: 1250,
-    totalMessages: 28,
-    totalBookings: 3
+  useEffect(() => {
+    fetchUserData();
+  }, [user]);
+
+  const fetchUserData = async () => {
+    if (!user) return;
+
+    try {
+      // Fetch user profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error('Profile fetch error:', profileError);
+      } else {
+        setProfile(profileData);
+      }
+
+      // Fetch user's properties
+      const { data: propertiesData, error: propertiesError } = await supabase
+        .from('properties')
+        .select('*')
+        .eq('owner_id', user.id);
+
+      if (propertiesError) {
+        console.error('Properties fetch error:', propertiesError);
+      } else {
+        setUserProperties(propertiesData || []);
+      }
+
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const myListings = [
-    {
-      id: "PROP-TN-20250727001",
-      title: "Premium Residential Plot",
-      district: "Chennai",
-      block: "A",
-      plotNo: "45",
-      price: 2500000,
-      area: "1200 Sqft",
-      image: heroImage,
-      status: "Available" as const,
-      type: "Residential"
-    },
-    {
-      id: "PROP-TN-20250727002", 
-      title: "Modern Villa with Garden",
-      district: "Coimbatore",
-      block: "B", 
-      plotNo: "12",
-      price: 4500000,
-      area: "2400 Sqft",
-      image: sampleHouse,
-      status: "Booked" as const,
-      type: "Villa"
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Signed out successfully",
+        description: "You have been logged out.",
+      });
+      navigate("/auth");
+    } catch (error) {
+      toast({
+        title: "Error signing out",
+        description: "Please try again.",
+        variant: "destructive",
+      });
     }
-  ];
+  };
 
-  const savedProperties = [
-    {
-      id: "PROP-TN-20250727006",
-      title: "Beachside Resort Plot",
-      district: "Kanyakumari",
-      block: "A",
-      plotNo: "89",
-      price: 3500000,
-      area: "2000 Sqft",
-      image: heroImage,
-      status: "Available" as const,
-      type: "Commercial"
-    }
-  ];
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">Loading...</div>
+      </div>
+    );
+  }
+
+  const userName = profile?.full_name || user?.email?.split('@')[0] || 'User';
+  const userInitials = userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -71,14 +96,14 @@ const ProfilePage = () => {
           <div className="flex items-center gap-4 mb-4">
             <Avatar className="h-20 w-20">
               <AvatarFallback className="bg-accent text-white text-xl">
-                RK
+                {userInitials}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <h1 className="text-2xl font-bold text-foreground">Rajesh Kumar</h1>
-              <p className="text-muted-foreground">rajesh.kumar@email.com</p>
+              <h1 className="text-2xl font-bold text-foreground">{userName}</h1>
+              <p className="text-muted-foreground">{user?.email}</p>
               <Badge className="mt-2 bg-accent text-white">
-                {userRole === "seller" ? "Property Seller" : "Property Buyer"}
+                {profile?.user_type === "seller" ? "Property Seller" : "Property Buyer"}
               </Badge>
             </div>
             <Button variant="outline" size="sm" onClick={() => navigate("/settings")}>
@@ -89,19 +114,19 @@ const ProfilePage = () => {
           {/* Stats */}
           <div className="grid grid-cols-4 gap-4">
             <div className="text-center">
-              <div className="text-xl font-bold text-accent">{userStats.totalListings}</div>
+              <div className="text-xl font-bold text-accent">{userProperties.length}</div>
               <div className="text-xs text-muted-foreground">Listings</div>
             </div>
             <div className="text-center">
-              <div className="text-xl font-bold text-accent">{userStats.totalViews}</div>
+              <div className="text-xl font-bold text-accent">0</div>
               <div className="text-xs text-muted-foreground">Views</div>
             </div>
             <div className="text-center">
-              <div className="text-xl font-bold text-accent">{userStats.totalMessages}</div>
+              <div className="text-xl font-bold text-accent">0</div>
               <div className="text-xs text-muted-foreground">Messages</div>
             </div>
             <div className="text-center">
-              <div className="text-xl font-bold text-accent">{userStats.totalBookings}</div>
+              <div className="text-xl font-bold text-accent">0</div>
               <div className="text-xs text-muted-foreground">Bookings</div>
             </div>
           </div>
@@ -110,16 +135,16 @@ const ProfilePage = () => {
 
       {/* Content */}
       <div className="px-4 py-6">
-        <Tabs defaultValue={userRole === "seller" ? "listings" : "saved"} className="w-full">
+        <Tabs defaultValue={profile?.user_type === "seller" ? "listings" : "saved"} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            {userRole === "seller" && (
+            {profile?.user_type === "seller" && (
               <TabsTrigger value="listings">My Listings</TabsTrigger>
             )}
             <TabsTrigger value="saved">Saved</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
           </TabsList>
 
-          {userRole === "seller" && (
+          {profile?.user_type === "seller" && (
             <TabsContent value="listings" className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold">My Property Listings</h2>
@@ -130,19 +155,43 @@ const ProfilePage = () => {
               </div>
 
               <div className="space-y-4">
-                {myListings.map((property) => (
-                  <div key={property.id} className="relative">
-                    <PropertyCard {...property} />
-                    <div className="absolute top-2 right-2 flex gap-2">
-                      <Button variant="secondary" size="sm">
-                        Edit
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </div>
+                {userProperties.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No properties listed yet</p>
+                    <Button 
+                      className="mt-4" 
+                      onClick={() => navigate("/post-property")}
+                    >
+                      Post Your First Property
+                    </Button>
                   </div>
-                ))}
+                ) : (
+                  userProperties.map((property) => (
+                    <div key={property.id} className="relative">
+                      <PropertyCard 
+                        id={property.id}
+                        title={property.title}
+                        district={property.district || property.location}
+                        block="N/A"
+                        plotNo="N/A"
+                        price={property.price}
+                        area={property.size_sqft ? `${property.size_sqft} Sqft` : "N/A"}
+                        image={property.images?.[0] || "/placeholder.svg"}
+                        status={property.is_available ? "Available" : "Sold"}
+                        type={property.category_id || "Property"}
+                      />
+                      <div className="absolute top-2 right-2 flex gap-2">
+                        <Button variant="secondary" size="sm">
+                          Edit
+                        </Button>
+                        <Button variant="outline" size="sm">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </TabsContent>
           )}
@@ -150,9 +199,22 @@ const ProfilePage = () => {
           <TabsContent value="saved" className="space-y-4">
             <h2 className="text-lg font-semibold">Saved Properties</h2>
             <div className="space-y-4">
-              {savedProperties.map((property) => (
-                <PropertyCard key={property.id} {...property} />
-              ))}
+              {savedProperties.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Heart className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No saved properties yet</p>
+                  <Button 
+                    className="mt-4" 
+                    onClick={() => navigate("/explore")}
+                  >
+                    Explore Properties
+                  </Button>
+                </div>
+              ) : (
+                savedProperties.map((property) => (
+                  <PropertyCard key={property.id} {...property} />
+                ))
+              )}
             </div>
           </TabsContent>
 
@@ -160,35 +222,11 @@ const ProfilePage = () => {
             <h2 className="text-lg font-semibold">Recent Activity</h2>
             
             <div className="space-y-3">
-              {[
-                {
-                  icon: Eye,
-                  text: "Your property 'Premium Residential Plot' received 15 new views",
-                  time: "2 hours ago"
-                },
-                {
-                  icon: MessageSquare,
-                  text: "New message from Priya Sharma about 'Agricultural Farmland'",
-                  time: "4 hours ago"
-                },
-                {
-                  icon: Heart,
-                  text: "Your property was saved by 3 users",
-                  time: "1 day ago"
-                }
-              ].map((activity, index) => (
-                <Card key={index}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-3">
-                      <activity.icon className="h-5 w-5 text-accent mt-0.5" />
-                      <div className="flex-1">
-                        <p className="text-sm text-foreground">{activity.text}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+              <div className="text-center py-8 text-muted-foreground">
+                <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No recent activity</p>
+                <p className="text-sm mt-2">Your property views, messages, and saves will appear here</p>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
@@ -215,7 +253,11 @@ const ProfilePage = () => {
               <Settings className="h-4 w-4 mr-2" />
               Account Settings
             </Button>
-            <Button variant="outline" className="w-full justify-start text-destructive hover:text-destructive">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start text-destructive hover:text-destructive"
+              onClick={handleSignOut}
+            >
               <LogOut className="h-4 w-4 mr-2" />
               Sign Out
             </Button>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Filter, MapPin, TrendingUp, Star, Clock, Users, Award, SlidersHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,61 +8,49 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import PropertyCard from "@/components/PropertyCard";
 import FilterModal from "@/components/FilterModal";
 import { useNavigate } from "react-router-dom";
-import heroImage from "@/assets/hero-property.jpg";
-import sampleHouse from "@/assets/sample-house.jpg";
-import sampleFarmland from "@/assets/sample-farmland.jpg";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const HomePage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all-types");
   const [selectedDistrict, setSelectedDistrict] = useState("all-districts");
   const [priceRange, setPriceRange] = useState("all-prices");
   const [showFilterModal, setShowFilterModal] = useState(false);
+  const [properties, setProperties] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const districts = [
     "Chennai", "Coimbatore", "Madurai", "Tiruchirappalli", "Salem",
     "Tirunelveli", "Erode", "Vellore", "Thoothukudi", "Dindigul"
   ];
 
-  const featuredProperties = [
-    {
-      id: "PROP-TN-20250727001",
-      title: "Premium Residential Plot",
-      district: "Chennai",
-      block: "A",
-      plotNo: "45",
-      price: 2500000,
-      area: "1200 Sqft",
-      image: heroImage,
-      status: "Available" as const,
-      type: "Residential"
-    },
-    {
-      id: "PROP-TN-20250727002",
-      title: "Modern Villa with Garden",
-      district: "Coimbatore",
-      block: "B",
-      plotNo: "12",
-      price: 4500000,
-      area: "2400 Sqft",
-      image: sampleHouse,
-      status: "Available" as const,
-      type: "Villa"
-    },
-    {
-      id: "PROP-TN-20250727003",
-      title: "Agricultural Farmland",
-      district: "Salem",
-      block: "C",
-      plotNo: "78",
-      price: 800000,
-      area: "2 Acres",
-      image: sampleFarmland,
-      status: "Booked" as const,
-      type: "Agricultural"
+  useEffect(() => {
+    fetchProperties();
+  }, []);
+
+  const fetchProperties = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('properties')
+        .select('*')
+        .eq('is_available', true)
+        .limit(6)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching properties:', error);
+      } else {
+        setProperties(data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching properties:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -70,7 +58,7 @@ const HomePage = () => {
       <div className="gradient-hero px-4 pt-8 pb-6">
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-primary mb-2">
-            Welcome to <span className="text-gradient">LandZilla</span>
+            Welcome back, <span className="text-gradient">{user?.email?.split('@')[0]}</span>
           </h1>
           <p className="text-muted-foreground">
             Find your perfect property in Tamil Nadu
@@ -184,12 +172,35 @@ const HomePage = () => {
         </div>
 
         <div className="space-y-4">
-          {featuredProperties.map((property) => (
-            <PropertyCard
-              key={property.id}
-              {...property}
-            />
-          ))}
+          {loading ? (
+            <div className="text-center py-8">Loading properties...</div>
+          ) : properties.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>No properties available yet.</p>
+              <Button 
+                className="mt-4" 
+                onClick={() => navigate("/post-property")}
+              >
+                Post the First Property
+              </Button>
+            </div>
+          ) : (
+            properties.map((property) => (
+              <PropertyCard 
+                key={property.id}
+                id={property.id}
+                title={property.title}
+                district={property.district || property.location}
+                block="N/A"
+                plotNo="N/A"
+                price={property.price}
+                area={property.size_sqft ? `${property.size_sqft} Sqft` : "N/A"}
+                image={property.images?.[0] || "/placeholder.svg"}
+                status={property.is_available ? "Available" : "Sold"}
+                type={property.category_id || "Property"}
+              />
+            ))
+          )}
         </div>
       </div>
 
