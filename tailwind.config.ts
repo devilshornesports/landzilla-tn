@@ -52,6 +52,12 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				// LandZilla custom colors
+				cream: 'hsl(var(--cream))',
+				'orange-red': 'hsl(var(--orange-red))',
+				'midnight-blue': 'hsl(var(--midnight-blue))',
+				success: 'hsl(var(--success))',
+				warning: 'hsl(var(--warning))',
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
