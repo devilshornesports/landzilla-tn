@@ -1,217 +1,361 @@
-import { useState } from "react";
-import { ArrowLeft, Plus, Edit, Eye, Trash2, Users, MoreVertical } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowLeft, Eye, Edit, Trash2, Users, MessageSquare, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useNavigate } from "react-router-dom";
-import heroImage from "@/assets/hero-property.jpg";
-import sampleHouse from "@/assets/sample-house.jpg";
-import sampleFarmland from "@/assets/sample-farmland.jpg";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const MyListingsPage = () => {
   const navigate = useNavigate();
-  
-  const [listings] = useState([
-    {
-      id: "PROP-TN-20250727001",
-      title: "Premium Residential Plot in Anna Nagar",
-      district: "Chennai",
-      image: heroImage,
-      status: "Active",
-      totalBlocks: 3,
-      totalPlots: 150,
-      bookedPlots: 45,
-      views: 234,
-      messages: 12,
-      createdAt: "2025-01-15"
-    },
-    {
-      id: "PROP-TN-20250727002",
-      title: "Modern Villa with Garden",
-      district: "Coimbatore",
-      image: sampleHouse,
-      status: "Active",
-      totalBlocks: 2,
-      totalPlots: 80,
-      bookedPlots: 20,
-      views: 156,
-      messages: 8,
-      createdAt: "2025-01-10"
-    },
-    {
-      id: "PROP-TN-20250727003",
-      title: "Agricultural Farmland",
-      district: "Salem",
-      image: sampleFarmland,
-      status: "Sold",
-      totalBlocks: 4,
-      totalPlots: 200,
-      bookedPlots: 200,
-      views: 89,
-      messages: 5,
-      createdAt: "2024-12-20"
-    }
-  ]);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [properties, setProperties] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [selectedProperty, setSelectedProperty] = useState<any>(null);
+  const [showBookingsModal, setShowBookingsModal] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Active":
-        return "bg-green-500 text-white";
-      case "Sold":
-        return "bg-gray-500 text-white";
-      case "Draft":
-        return "bg-yellow-500 text-white";
-      default:
-        return "bg-muted text-muted-foreground";
+  useEffect(() => {
+    fetchProperties();
+    fetchBookings();
+  }, [user]);
+
+  const fetchProperties = async () => {
+    if (!user) return;
+
+    try {
+      const { data: propertiesData, error } = await supabase
+        .from('properties')
+        .select('*')
+        .eq('owner_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setProperties(propertiesData || []);
+    } catch (error) {
+      console.error('Error fetching properties:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleEdit = (listingId: string) => {
-    navigate(`/post-property?edit=${listingId}`);
+  const fetchBookings = async () => {
+    if (!user) return;
+
+    try {
+      const { data: bookingsData, error } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          properties!inner(title, location),
+          profiles!bookings_renter_id_fkey(full_name, phone)
+        `)
+        .eq('owner_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setBookings(bookingsData || []);
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+    }
   };
 
-  const handleViewBookings = (listingId: string) => {
-    navigate(`/listings/${listingId}/bookings`);
+  const togglePropertyStatus = async (propertyId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('properties')
+        .update({ is_available: !currentStatus })
+        .eq('id', propertyId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Status updated",
+        description: `Property marked as ${!currentStatus ? 'available' : 'unavailable'}`,
+      });
+
+      fetchProperties();
+    } catch (error) {
+      toast({
+        title: "Error updating status",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDelete = (listingId: string) => {
-    // Handle delete logic
-    console.log("Delete listing:", listingId);
+  const deleteProperty = async (propertyId: string) => {
+    if (!confirm('Are you sure you want to delete this property?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('properties')
+        .delete()
+        .eq('id', propertyId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Property deleted",
+        description: "Property has been removed from your listings.",
+      });
+
+      fetchProperties();
+    } catch (error) {
+      toast({
+        title: "Error deleting property",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    }
   };
+
+  const viewPropertyBookings = (property: any) => {
+    setSelectedProperty(property);
+    setShowBookingsModal(true);
+  };
+
+  const propertyBookings = bookings.filter(booking => booking.property_id === selectedProperty?.id);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">Loading your properties...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      {/* Header */}
-      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
-        <div className="flex items-center justify-between p-4">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <h1 className="text-xl font-semibold text-foreground">My Listings</h1>
-          </div>
-          <Button onClick={() => navigate("/post-property")} className="bg-accent hover:bg-accent/90">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Property
+      <div className="bg-card border-b border-border px-4 py-4">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/profile")}>
+            <ArrowLeft className="h-4 w-4" />
           </Button>
-        </div>
-      </div>
-
-      <div className="p-4 space-y-4">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <Card className="text-center">
-            <CardContent className="pt-4">
-              <div className="text-2xl font-bold text-accent">{listings.length}</div>
-              <div className="text-sm text-muted-foreground">Total Listings</div>
-            </CardContent>
-          </Card>
-          <Card className="text-center">
-            <CardContent className="pt-4">
-              <div className="text-2xl font-bold text-accent">
-                {listings.reduce((sum, listing) => sum + listing.bookedPlots, 0)}
-              </div>
-              <div className="text-sm text-muted-foreground">Plots Booked</div>
-            </CardContent>
-          </Card>
-          <Card className="text-center">
-            <CardContent className="pt-4">
-              <div className="text-2xl font-bold text-accent">
-                {listings.reduce((sum, listing) => sum + listing.views, 0)}
-              </div>
-              <div className="text-sm text-muted-foreground">Total Views</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Listings */}
-        {listings.map((listing) => (
-          <Card key={listing.id}>
-            <CardContent className="p-0">
-              <div className="flex">
-                <img
-                  src={listing.image}
-                  alt={listing.title}
-                  className="w-24 h-24 object-cover rounded-l-lg"
-                />
-                <div className="flex-1 p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-foreground line-clamp-1 mb-1">
-                        {listing.title}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">{listing.district}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className={getStatusColor(listing.status)}>
-                        {listing.status}
-                      </Badge>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEdit(listing.id)}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleViewBookings(listing.id)}>
-                            <Users className="h-4 w-4 mr-2" />
-                            View Bookings
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => navigate(`/property/${listing.id}`)}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Property
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => handleDelete(listing.id)}
-                            className="text-red-600"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-3 gap-4 text-xs text-muted-foreground">
-                    <div>
-                      <div className="font-medium text-foreground">{listing.totalBlocks}</div>
-                      <div>Blocks</div>
-                    </div>
-                    <div>
-                      <div className="font-medium text-foreground">
-                        {listing.bookedPlots}/{listing.totalPlots}
-                      </div>
-                      <div>Booked</div>
-                    </div>
-                    <div>
-                      <div className="font-medium text-foreground">{listing.views}</div>
-                      <div>Views</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-
-        {listings.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">🏠</div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">No listings yet</h3>
-            <p className="text-muted-foreground mb-6">Start by adding your first property listing</p>
-            <Button onClick={() => navigate("/post-property")} className="bg-accent hover:bg-accent/90">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Your First Property
-            </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Manage Properties</h1>
+            <p className="text-muted-foreground">{properties.length} active listings</p>
           </div>
-        )}
+        </div>
       </div>
+
+      <div className="px-4 py-6">
+        <Tabs defaultValue="properties" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="properties">My Properties</TabsTrigger>
+            <TabsTrigger value="bookings">Bookings ({bookings.length})</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="properties" className="space-y-4">
+            {properties.length === 0 ? (
+              <div className="text-center py-8">
+                <h3 className="text-lg font-medium mb-2">No properties listed</h3>
+                <p className="text-muted-foreground mb-4">Start by posting your first property</p>
+                <Button onClick={() => navigate("/post-property")}>
+                  Post Property
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {properties.map((property) => (
+                  <Card key={property.id} className="relative">
+                    <CardContent className="p-4">
+                      <div className="flex gap-4">
+                        {property.images?.[0] && (
+                          <img
+                            src={property.images[0]}
+                            alt={property.title}
+                            className="w-24 h-24 rounded-lg object-cover"
+                          />
+                        )}
+                        
+                        <div className="flex-1">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h3 className="font-semibold text-lg">{property.title}</h3>
+                              <p className="text-muted-foreground">{property.location}</p>
+                              <p className="text-accent font-bold text-lg">
+                                ₹{property.price?.toLocaleString('en-IN')}
+                              </p>
+                            </div>
+                            
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => navigate(`/property/${property.id}`)}>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View Property
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => viewPropertyBookings(property)}>
+                                  <Users className="h-4 w-4 mr-2" />
+                                  View Bookings
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => togglePropertyStatus(property.id, property.is_available)}
+                                >
+                                  {property.is_available ? 'Mark as Sold' : 'Mark as Available'}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  className="text-destructive"
+                                  onClick={() => deleteProperty(property.id)}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete Property
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                          
+                          <div className="flex items-center gap-2 mt-2">
+                            <Badge variant={property.is_available ? "default" : "secondary"}>
+                              {property.is_available ? "Available" : "Sold"}
+                            </Badge>
+                            <Badge variant="outline">
+                              Views: {property.view_count || 0}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="bookings" className="space-y-4">
+            {bookings.length === 0 ? (
+              <div className="text-center py-8">
+                <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-lg font-medium mb-2">No bookings yet</h3>
+                <p className="text-muted-foreground">Bookings will appear here when users book your properties</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {bookings.map((booking) => (
+                  <Card key={booking.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-semibold">{booking.properties?.title}</h3>
+                          <p className="text-muted-foreground text-sm">{booking.properties?.location}</p>
+                          
+                          <div className="flex items-center gap-4 mt-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarFallback className="bg-accent text-white text-sm">
+                                {booking.profiles?.full_name?.charAt(0) || 'U'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium text-sm">{booking.profiles?.full_name || 'Anonymous'}</p>
+                              <p className="text-muted-foreground text-xs">{booking.profiles?.phone}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-4 mt-3 text-sm">
+                            <span>From: {new Date(booking.start_date).toLocaleDateString()}</span>
+                            <span>To: {new Date(booking.end_date).toLocaleDateString()}</span>
+                            <span className="font-medium text-accent">₹{booking.total_price?.toLocaleString('en-IN')}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-col items-end gap-2">
+                          <Badge 
+                            variant={booking.status === 'confirmed' ? 'default' : 
+                                   booking.status === 'pending' ? 'secondary' : 'destructive'}
+                          >
+                            {booking.status}
+                          </Badge>
+                          
+                          <Button size="sm" variant="outline">
+                            <MessageSquare className="h-4 w-4 mr-1" />
+                            Contact
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      {/* Bookings Modal */}
+      <Dialog open={showBookingsModal} onOpenChange={setShowBookingsModal}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Bookings for {selectedProperty?.title}</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {propertyBookings.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No bookings for this property</p>
+            ) : (
+              propertyBookings.map((booking) => (
+                <Card key={booking.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Avatar>
+                          <AvatarFallback className="bg-accent text-white">
+                            {booking.profiles?.full_name?.charAt(0) || 'U'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{booking.profiles?.full_name || 'Anonymous'}</p>
+                          <p className="text-sm text-muted-foreground">{booking.profiles?.phone}</p>
+                        </div>
+                      </div>
+                      <Badge variant={booking.status === 'confirmed' ? 'default' : 'secondary'}>
+                        {booking.status}
+                      </Badge>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Check-in</p>
+                        <p className="font-medium">{new Date(booking.start_date).toLocaleDateString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Check-out</p>
+                        <p className="font-medium">{new Date(booking.end_date).toLocaleDateString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Total Amount</p>
+                        <p className="font-medium text-accent">₹{booking.total_price?.toLocaleString('en-IN')}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Payment Status</p>
+                        <p className="font-medium">{booking.payment_status}</p>
+                      </div>
+                    </div>
+                    
+                    {booking.notes && (
+                      <div className="mt-3">
+                        <p className="text-muted-foreground text-sm">Notes</p>
+                        <p className="text-sm">{booking.notes}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
