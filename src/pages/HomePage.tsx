@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Search, Filter, MapPin, TrendingUp, Star, Clock, Users, Award } from "lucide-react";
+import { Search, Filter, MapPin, TrendingUp, Star, Clock, Users, Award, SlidersHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PropertyCard from "@/components/PropertyCard";
+import FilterModal from "@/components/FilterModal";
 import { useNavigate } from "react-router-dom";
 import heroImage from "@/assets/hero-property.jpg";
 import sampleHouse from "@/assets/sample-house.jpg";
@@ -13,6 +15,10 @@ import sampleFarmland from "@/assets/sample-farmland.jpg";
 const HomePage = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedDistrict, setSelectedDistrict] = useState("");
+  const [priceRange, setPriceRange] = useState("");
+  const [showFilterModal, setShowFilterModal] = useState(false);
 
   const districts = [
     "Chennai", "Coimbatore", "Madurai", "Tiruchirappalli", "Salem",
@@ -83,23 +89,67 @@ const HomePage = () => {
           <Button
             size="sm"
             className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-accent hover:bg-accent/90"
+            onClick={() => setShowFilterModal(true)}
           >
-            <Filter className="h-4 w-4" />
+            <SlidersHorizontal className="h-4 w-4" />
           </Button>
         </div>
 
         {/* Quick Filters */}
-        <div className="flex gap-2 overflow-x-auto pb-2">
-          {districts.slice(0, 5).map((district) => (
-            <Badge
-              key={district}
-              variant="secondary"
-              className="whitespace-nowrap cursor-pointer hover:bg-accent hover:text-white transition-colors"
-            >
-              <MapPin className="h-3 w-3 mr-1" />
-              {district}
-            </Badge>
-          ))}
+        <div className="space-y-3">
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            <Select value={selectedDistrict} onValueChange={setSelectedDistrict}>
+              <SelectTrigger className="w-[140px] rounded-xl bg-white">
+                <SelectValue placeholder="District" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Districts</SelectItem>
+                {districts.map((district) => (
+                  <SelectItem key={district} value={district}>{district}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={priceRange} onValueChange={setPriceRange}>
+              <SelectTrigger className="w-[140px] rounded-xl bg-white">
+                <SelectValue placeholder="Price Range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Prices</SelectItem>
+                <SelectItem value="0-1000000">Under ₹10L</SelectItem>
+                <SelectItem value="1000000-2500000">₹10L - ₹25L</SelectItem>
+                <SelectItem value="2500000-5000000">₹25L - ₹50L</SelectItem>
+                <SelectItem value="5000000+">Above ₹50L</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger className="w-[140px] rounded-xl bg-white">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Types</SelectItem>
+                <SelectItem value="residential">Residential</SelectItem>
+                <SelectItem value="commercial">Commercial</SelectItem>
+                <SelectItem value="agricultural">Agricultural</SelectItem>
+                <SelectItem value="villa">Villa</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {districts.slice(0, 6).map((district) => (
+              <Badge
+                key={district}
+                variant={selectedDistrict === district ? "default" : "secondary"}
+                className="whitespace-nowrap cursor-pointer hover:bg-accent hover:text-white transition-colors"
+                onClick={() => setSelectedDistrict(selectedDistrict === district ? "" : district)}
+              >
+                <MapPin className="h-3 w-3 mr-1" />
+                {district}
+              </Badge>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -210,6 +260,16 @@ const HomePage = () => {
           ))}
         </div>
       </div>
+
+      {/* Filter Modal */}
+      <FilterModal 
+        isOpen={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        onApplyFilters={(filters) => {
+          console.log("Applied filters:", filters);
+          // Handle filter application logic here
+        }}
+      />
     </div>
   );
 };

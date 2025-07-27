@@ -13,6 +13,7 @@ import PropertyDetailsPage from "./pages/PropertyDetailsPage";
 import SettingsPage from "./pages/SettingsPage";
 import MyListingsPage from "./pages/MyListingsPage";
 import ListingBookingsPage from "./pages/ListingBookingsPage";
+import EditProfilePage from "./pages/EditProfilePage";
 import BottomNavigation from "./components/BottomNavigation";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/my-listings" element={<MyListingsPage />} />
             <Route path="/listings/:listingId/bookings" element={<ListingBookingsPage />} />
+            <Route path="/edit-profile" element={<EditProfilePage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

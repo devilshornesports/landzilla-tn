@@ -199,11 +199,19 @@ const ProfilePage = () => {
             <CardTitle className="text-lg">Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button variant="outline" className="w-full justify-start">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => navigate("/edit-profile")}
+            >
               <User className="h-4 w-4 mr-2" />
               Edit Profile
             </Button>
-            <Button variant="outline" className="w-full justify-start">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => navigate("/settings")}
+            >
               <Settings className="h-4 w-4 mr-2" />
               Account Settings
             </Button>

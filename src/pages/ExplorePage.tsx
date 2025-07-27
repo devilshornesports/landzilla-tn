@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Filter, Map, Grid3X3, Search } from "lucide-react";
+import { Filter, Map, Grid3X3, Search, SlidersHorizontal, MapPin, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent } from "@/components/ui/card";
 import PropertyCard from "@/components/PropertyCard";
+import FilterModal from "@/components/FilterModal";
 import heroImage from "@/assets/hero-property.jpg";
 import sampleHouse from "@/assets/sample-house.jpg";
 import sampleFarmland from "@/assets/sample-farmland.jpg";
@@ -13,6 +15,9 @@ const ExplorePage = () => {
   const [viewType, setViewType] = useState<"grid" | "map">("grid");
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [priceRange, setPriceRange] = useState("");
+  const [selectedType, setSelectedType] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
+  const [showFilterModal, setShowFilterModal] = useState(false);
 
   const districts = [
     "Chennai", "Coimbatore", "Madurai", "Tiruchirappalli", "Salem",
@@ -129,8 +134,26 @@ const ExplorePage = () => {
             </SelectContent>
           </Select>
 
-          <Button variant="outline" size="sm" className="rounded-xl">
-            <Filter className="h-4 w-4 mr-1" />
+          <Select value={selectedType} onValueChange={setSelectedType}>
+            <SelectTrigger className="w-[120px] rounded-xl">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="Residential">Residential</SelectItem>
+              <SelectItem value="Commercial">Commercial</SelectItem>
+              <SelectItem value="Agricultural">Agricultural</SelectItem>
+              <SelectItem value="Villa">Villa</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="rounded-xl"
+            onClick={() => setShowFilterModal(true)}
+          >
+            <SlidersHorizontal className="h-4 w-4 mr-1" />
             More
           </Button>
         </div>
@@ -148,11 +171,24 @@ const ExplorePage = () => {
           ))}
         </div>
 
-        {/* View Toggle */}
+        {/* Sort and View Options */}
         <div className="flex items-center justify-between mt-4">
-          <span className="text-sm text-muted-foreground">
-            {properties.length} properties found
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              {properties.length} properties found
+            </span>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-[120px] rounded-xl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest</SelectItem>
+                <SelectItem value="price-low">Price: Low to High</SelectItem>
+                <SelectItem value="price-high">Price: High to Low</SelectItem>
+                <SelectItem value="area">Area</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="flex gap-1 bg-muted rounded-xl p-1">
             <Button
               variant={viewType === "grid" ? "default" : "ghost"}
@@ -196,6 +232,16 @@ const ExplorePage = () => {
           </div>
         )}
       </div>
+
+      {/* Filter Modal */}
+      <FilterModal 
+        isOpen={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        onApplyFilters={(filters) => {
+          console.log("Applied filters:", filters);
+          // Handle filter application logic here
+        }}
+      />
     </div>
   );
 };
