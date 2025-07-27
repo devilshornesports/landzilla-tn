@@ -53,6 +53,25 @@ const ProfilePage = () => {
         setUserProperties(propertiesData || []);
       }
 
+      // Fetch saved properties
+      const { data: savedData, error: savedError } = await supabase
+        .from('saved_properties')
+        .select('property_id')
+        .eq('user_id', user.id);
+
+      if (savedError) {
+        console.error('Saved properties fetch error:', savedError);
+      } else if (savedData && savedData.length > 0) {
+        // Fetch the actual property details for saved properties
+        const propertyIds = savedData.map(item => item.property_id);
+        const { data: savedPropertiesData } = await supabase
+          .from('properties')
+          .select('*')
+          .in('id', propertyIds);
+        
+        setSavedProperties(savedPropertiesData || []);
+      }
+
     } catch (error) {
       console.error('Error fetching user data:', error);
     } finally {
@@ -212,7 +231,19 @@ const ProfilePage = () => {
                 </div>
               ) : (
                 savedProperties.map((property) => (
-                  <PropertyCard key={property.id} {...property} />
+                  <PropertyCard 
+                    key={property.id}
+                    id={property.id}
+                    title={property.title}
+                    district={property.district || property.location}
+                    block="N/A"
+                    plotNo="N/A"
+                    price={property.price}
+                    area={property.size_sqft ? `${property.size_sqft} Sqft` : "N/A"}
+                    image={property.images?.[0] || "/placeholder.svg"}
+                    status={property.is_available ? "Available" : "Sold"}
+                    type="Property"
+                  />
                 ))
               )}
             </div>

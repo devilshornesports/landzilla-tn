@@ -11,6 +11,8 @@ import ProfilePage from "./pages/ProfilePage";
 import PropertyDetailsPage from "./pages/PropertyDetailsPage";
 import MessagesPage from "./pages/MessagesPage";
 import EditProfilePage from "./pages/EditProfilePage";
+import EditPropertyPage from "./pages/EditPropertyPage";
+import BookingDashboardPage from "./pages/BookingDashboardPage";
 import MyListingsPage from "./pages/MyListingsPage";
 import ListingBookingsPage from "./pages/ListingBookingsPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -94,6 +96,16 @@ function AppRoutes() {
         <Route path="/edit-profile" element={
           <ProtectedRoute>
             <EditProfilePage />
+          </ProtectedRoute>
+        } />
+        <Route path="/edit-property/:id" element={
+          <ProtectedRoute>
+            <EditPropertyPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/booking-dashboard/:id" element={
+          <ProtectedRoute>
+            <BookingDashboardPage />
           </ProtectedRoute>
         } />
         <Route path="/my-listings" element={

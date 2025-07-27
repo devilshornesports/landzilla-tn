@@ -37,22 +37,26 @@ const PropertyDetailsPage = () => {
     try {
       const { data, error } = await supabase
         .from('properties')
-        .select(`
-          *,
-          profiles!properties_owner_id_fkey(full_name, phone, is_verified)
-        `)
+        .select('*')
         .eq('id', id)
         .maybeSingle();
 
       if (error) throw error;
       
       if (data) {
+        // Fetch owner profile separately
+        const { data: ownerData } = await supabase
+          .from('profiles')
+          .select('full_name, phone, is_verified')
+          .eq('user_id', data.owner_id)
+          .single();
+
         setProperty({
           ...data,
           owner: {
-            name: data.profiles?.full_name || 'Property Owner',
-            phone: data.profiles?.phone || 'N/A',
-            verified: data.profiles?.is_verified || false
+            name: ownerData?.full_name || 'Property Owner',
+            phone: ownerData?.phone || 'N/A',
+            verified: ownerData?.is_verified || false
           }
         });
       }

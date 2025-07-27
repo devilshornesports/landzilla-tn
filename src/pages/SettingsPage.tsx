@@ -1,73 +1,106 @@
 import { useState } from "react";
-import { ArrowLeft, User, Bell, Shield, Globe, Moon, Sun, HelpCircle } from "lucide-react";
+import { ArrowLeft, User, Lock, HelpCircle, Phone, AlertTriangle, FileText, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 const SettingsPage = () => {
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
-  const [language, setLanguage] = useState("en");
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   const settingsSections = [
     {
       title: "Account",
       icon: User,
       items: [
-        { label: "Edit Profile", onClick: () => navigate("/profile/edit") },
-        { label: "Change Password", onClick: () => {} },
-        { label: "Account Verification", onClick: () => {} },
-      ]
-    },
-    {
-      title: "Preferences",
-      icon: Bell,
-      items: [
-        { 
-          label: "Push Notifications", 
-          type: "toggle", 
-          value: notifications, 
-          onChange: setNotifications 
+        {
+          title: "Edit Profile",
+          description: "Update your personal information",
+          action: () => navigate("/edit-profile"),
+          icon: User
         },
-        { 
-          label: "Dark Mode", 
-          type: "toggle", 
-          value: darkMode, 
-          onChange: setDarkMode 
-        },
-        { 
-          label: "Language", 
-          type: "select", 
-          value: language, 
-          onChange: setLanguage,
-          options: [
-            { value: "en", label: "English" },
-            { value: "ta", label: "தமிழ் (Tamil)" }
-          ]
-        },
-      ]
-    },
-    {
-      title: "Security",
-      icon: Shield,
-      items: [
-        { label: "Two-Factor Authentication", onClick: () => {} },
-        { label: "Login History", onClick: () => {} },
-        { label: "Privacy Settings", onClick: () => {} },
+        {
+          title: "Change Password",
+          description: "Update your account password",
+          action: () => {
+            toast({
+              title: "Coming Soon",
+              description: "Password change feature will be available soon"
+            });
+          },
+          icon: Lock
+        }
       ]
     },
     {
       title: "Support",
       icon: HelpCircle,
       items: [
-        { label: "Help Center", onClick: () => {} },
-        { label: "Contact Support", onClick: () => {} },
-        { label: "Report a Problem", onClick: () => {} },
-        { label: "Terms of Service", onClick: () => {} },
-        { label: "Privacy Policy", onClick: () => {} },
+        {
+          title: "Help Center",
+          description: "Find answers to common questions",
+          action: () => {
+            toast({
+              title: "Coming Soon",
+              description: "Help center will be available soon"
+            });
+          },
+          icon: HelpCircle
+        },
+        {
+          title: "Contact Support",
+          description: "Get help from our support team",
+          action: () => {
+            toast({
+              title: "Contact Support",
+              description: "Email us at support@landzilla.com"
+            });
+          },
+          icon: Phone
+        },
+        {
+          title: "Report a Problem",
+          description: "Report bugs or issues with the app",
+          action: () => {
+            toast({
+              title: "Report Problem",
+              description: "Email us at support@landzilla.com with details"
+            });
+          },
+          icon: AlertTriangle
+        }
+      ]
+    },
+    {
+      title: "Legal",
+      icon: FileText,
+      items: [
+        {
+          title: "Terms of Service",
+          description: "Read our terms and conditions",
+          action: () => {
+            toast({
+              title: "Terms of Service",
+              description: "View terms at landzilla.com/terms"
+            });
+          },
+          icon: FileText
+        },
+        {
+          title: "Privacy Policy",
+          description: "Learn about our privacy practices",
+          action: () => {
+            toast({
+              title: "Privacy Policy",
+              description: "View policy at landzilla.com/privacy"
+            });
+          },
+          icon: Shield
+        }
       ]
     }
   ];
@@ -76,68 +109,95 @@ const SettingsPage = () => {
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
-        <div className="flex items-center gap-3 p-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+        <div className="flex items-center gap-4 p-4">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/profile')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-xl font-semibold text-foreground">Settings</h1>
+          <div>
+            <h1 className="text-xl font-semibold">Settings</h1>
+            <p className="text-sm text-muted-foreground">Manage your account and app preferences</p>
+          </div>
         </div>
       </div>
 
+      {/* Content */}
       <div className="p-4 space-y-6">
+        {/* User Info */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Account Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Email</label>
+                <p className="text-foreground">{user?.email}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Account Status</label>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge className="bg-green-500 text-white">Active</Badge>
+                  <Badge variant="outline">Verified</Badge>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Settings Sections */}
         {settingsSections.map((section) => (
           <Card key={section.title}>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <section.icon className="h-5 w-5 text-accent" />
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <section.icon className="h-5 w-5" />
                 {section.title}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-1">
-              {section.items.map((item, index) => (
-                <div key={index} className="flex items-center justify-between py-3 border-b border-border last:border-b-0">
-                  <span className="text-foreground">{item.label}</span>
-                  
-                  {item.type === "toggle" && (
-                    <Switch
-                      checked={item.value}
-                      onCheckedChange={item.onChange}
-                    />
-                  )}
-                  
-                  {item.type === "select" && (
-                    <Select value={item.value} onValueChange={item.onChange}>
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {item.options?.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                  
-                  {!item.type && (
-                    <Button variant="ghost" size="sm" onClick={item.onClick}>
-                      →
-                    </Button>
-                  )}
+            <CardContent className="space-y-3">
+              {section.items.map((item) => (
+                <div
+                  key={item.title}
+                  className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer transition-colors"
+                  onClick={item.action}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 bg-accent/10 rounded-full flex items-center justify-center">
+                      <item.icon className="h-5 w-5 text-accent" />
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-foreground">{item.title}</h3>
+                      <p className="text-sm text-muted-foreground">{item.description}</p>
+                    </div>
+                  </div>
+                  <ArrowLeft className="h-4 w-4 rotate-180 text-muted-foreground" />
                 </div>
               ))}
             </CardContent>
           </Card>
         ))}
 
-        {/* App Info */}
+        {/* App Information */}
         <Card>
-          <CardContent className="pt-6 text-center">
-            <div className="text-2xl font-bold text-accent mb-2">LandZilla</div>
-            <div className="text-sm text-muted-foreground mb-4">Version 1.0.0</div>
-            <div className="text-xs text-muted-foreground">
-              © 2025 LandZilla. All rights reserved.
+          <CardHeader>
+            <CardTitle>App Information</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Version</span>
+                <span className="text-foreground">1.0.0</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Build</span>
+                <span className="text-foreground">2025.01.27</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Platform</span>
+                <span className="text-foreground">Web</span>
+              </div>
             </div>
           </CardContent>
         </Card>

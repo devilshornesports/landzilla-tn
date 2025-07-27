@@ -36,7 +36,7 @@ const MessagesPage = () => {
             event: 'INSERT',
             schema: 'public',
             table: 'messages',
-            filter: `conversation_id=eq.${selectedChat}`
+            filter: `sender_id=eq.${user.id},receiver_id=eq.${user.id}`
           },
           (payload) => {
             setMessages(prev => [...prev, payload.new]);
@@ -48,41 +48,56 @@ const MessagesPage = () => {
         supabase.removeChannel(channel);
       };
     }
-  }, [selectedChat]);
+  }, [selectedChat, user]);
 
   const fetchConversations = async () => {
     try {
-      const { data, error } = await supabase
-        .from('conversations')
-        .select(`
-          *,
-          properties(title),
-          participant_1_profile:profiles!conversations_participant_1_fkey(full_name, is_verified),
-          participant_2_profile:profiles!conversations_participant_2_fkey(full_name, is_verified),
-          last_message:messages!conversations_last_message_id_fkey(content, created_at)
-        `)
-        .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
-        .order('last_activity', { ascending: false });
+      // Fetch messages where user is sender or receiver, grouped by other participant
+      const { data: messagesData, error } = await supabase
+        .from('messages')
+        .select('*')
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      const formattedConversations = data.map(conv => {
-        const otherParticipant = conv.participant_1 === user.id 
-          ? conv.participant_2_profile 
-          : conv.participant_1_profile;
+      // Group messages by conversation (other participant + property)
+      const conversationMap = new Map();
+      
+      for (const msg of messagesData || []) {
+        const otherParticipantId = msg.sender_id === user.id ? msg.receiver_id : msg.sender_id;
+        const key = `${otherParticipantId}-${msg.property_id}`;
         
-        return {
-          id: conv.id,
-          name: otherParticipant?.full_name || 'Unknown User',
-          property: conv.properties?.title || 'Property Discussion',
-          lastMessage: conv.last_message?.content || 'No messages yet',
-          time: conv.last_message?.created_at ? new Date(conv.last_message.created_at).toLocaleTimeString() : '',
-          unread: 0, // TODO: Implement unread count
-          isVerified: otherParticipant?.is_verified || false
-        };
-      });
+        if (!conversationMap.has(key)) {
+          // Fetch other participant profile
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('full_name, is_verified')
+            .eq('user_id', otherParticipantId)
+            .single();
 
-      setConversations(formattedConversations);
+          // Fetch property title
+          const { data: propertyData } = await supabase
+            .from('properties')
+            .select('title')
+            .eq('id', msg.property_id)
+            .single();
+
+          conversationMap.set(key, {
+            id: key,
+            otherParticipantId,
+            name: profileData?.full_name || 'Unknown User',
+            property: propertyData?.title || 'Property Discussion',
+            lastMessage: msg.content,
+            time: new Date(msg.created_at).toLocaleTimeString(),
+            unread: 0,
+            isVerified: profileData?.is_verified || false,
+            propertyId: msg.property_id
+          });
+        }
+      }
+
+      setConversations(Array.from(conversationMap.values()));
     } catch (error) {
       console.error('Error fetching conversations:', error);
     } finally {
@@ -92,10 +107,13 @@ const MessagesPage = () => {
 
   const fetchMessages = async (conversationId: string) => {
     try {
+      const [otherParticipantId, propertyId] = conversationId.split('-');
+      
       const { data, error } = await supabase
         .from('messages')
         .select('*')
-        .eq('conversation_id', conversationId)
+        .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherParticipantId}),and(sender_id.eq.${otherParticipantId},receiver_id.eq.${user.id})`)
+        .eq('property_id', propertyId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -118,11 +136,14 @@ const MessagesPage = () => {
     if (!message.trim() || !selectedChat) return;
 
     try {
+      const [otherParticipantId, propertyId] = selectedChat.split('-');
+
       const { error } = await supabase
         .from('messages')
         .insert({
-          conversation_id: selectedChat,
           sender_id: user.id,
+          receiver_id: otherParticipantId,
+          property_id: propertyId,
           content: message.trim(),
           message_type: 'text'
         });
@@ -130,6 +151,7 @@ const MessagesPage = () => {
       if (error) throw error;
 
       setMessage("");
+      fetchMessages(selectedChat);
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -166,52 +188,52 @@ const MessagesPage = () => {
             ) : (
               <div className="space-y-3">
                 {conversations.map((conversation) => (
-                <Card
-                  key={conversation.id}
-                  className={`cursor-pointer transition-all hover:shadow-md ${
-                    selectedChat === conversation.id ? 'ring-2 ring-accent' : ''
-                  }`}
-                  onClick={() => setSelectedChat(conversation.id)}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-3">
-                      <Avatar>
-                        <AvatarFallback className="bg-accent text-white">
-                          {conversation.name.split(' ').map(n => n[0]).join('')}
-                        </AvatarFallback>
-                      </Avatar>
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-medium text-foreground truncate">
-                            {conversation.name}
-                          </h3>
-                          {conversation.isVerified && (
-                            <Shield className="h-4 w-4 text-success" />
-                          )}
-                          {conversation.unread > 0 && (
-                            <Badge className="ml-auto bg-accent text-white text-xs">
-                              {conversation.unread}
-                            </Badge>
-                          )}
-                        </div>
+                  <Card
+                    key={conversation.id}
+                    className={`cursor-pointer transition-all hover:shadow-md ${
+                      selectedChat === conversation.id ? 'ring-2 ring-accent' : ''
+                    }`}
+                    onClick={() => setSelectedChat(conversation.id)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <Avatar>
+                          <AvatarFallback className="bg-accent text-white">
+                            {conversation.name.split(' ').map((n: string) => n[0]).join('')}
+                          </AvatarFallback>
+                        </Avatar>
                         
-                        <p className="text-sm text-muted-foreground truncate mb-1">
-                          {conversation.property}
-                        </p>
-                        
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm text-muted-foreground truncate">
-                            {conversation.lastMessage}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-medium text-foreground truncate">
+                              {conversation.name}
+                            </h3>
+                            {conversation.isVerified && (
+                              <Shield className="h-4 w-4 text-success" />
+                            )}
+                            {conversation.unread > 0 && (
+                              <Badge className="ml-auto bg-accent text-white text-xs">
+                                {conversation.unread}
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          <p className="text-sm text-muted-foreground truncate mb-1">
+                            {conversation.property}
                           </p>
-                          <span className="text-xs text-muted-foreground ml-2">
-                            {conversation.time}
-                          </span>
+                          
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm text-muted-foreground truncate">
+                              {conversation.lastMessage}
+                            </p>
+                            <span className="text-xs text-muted-foreground ml-2">
+                              {conversation.time}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             )}
@@ -228,7 +250,7 @@ const MessagesPage = () => {
                   <div className="flex items-center gap-3">
                     <Avatar>
                       <AvatarFallback className="bg-accent text-white">
-                        {conversations.find(c => c.id === selectedChat)?.name.split(' ').map(n => n[0]).join('')}
+                        {conversations.find(c => c.id === selectedChat)?.name.split(' ').map((n: string) => n[0]).join('')}
                       </AvatarFallback>
                     </Avatar>
                     <div>
