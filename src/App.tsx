@@ -9,6 +9,10 @@ import PostPropertyPage from "./pages/PostPropertyPage";
 import MessagesPage from "./pages/MessagesPage";
 import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
+import PropertyDetailsPage from "./pages/PropertyDetailsPage";
+import SettingsPage from "./pages/SettingsPage";
+import MyListingsPage from "./pages/MyListingsPage";
+import ListingBookingsPage from "./pages/ListingBookingsPage";
 import BottomNavigation from "./components/BottomNavigation";
 
 const queryClient = new QueryClient();
@@ -26,6 +30,10 @@ const App = () => (
             <Route path="/post-property" element={<PostPropertyPage />} />
             <Route path="/messages" element={<MessagesPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/property/:id" element={<PropertyDetailsPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/my-listings" element={<MyListingsPage />} />
+            <Route path="/listings/:listingId/bookings" element={<ListingBookingsPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -1,15 +1,17 @@
 import { useState } from "react";
-import { User, Settings, Heart, Eye, MessageSquare, Plus, LogOut } from "lucide-react";
+import { User, Settings, Heart, Eye, MessageSquare, Plus, LogOut, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PropertyCard from "@/components/PropertyCard";
+import { useNavigate } from "react-router-dom";
 import heroImage from "@/assets/hero-property.jpg";
 import sampleHouse from "@/assets/sample-house.jpg";
 
 const ProfilePage = () => {
+  const navigate = useNavigate();
   const [userRole] = useState<"buyer" | "seller">("seller");
 
   const userStats = {
@@ -79,7 +81,7 @@ const ProfilePage = () => {
                 {userRole === "seller" ? "Property Seller" : "Property Buyer"}
               </Badge>
             </div>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => navigate("/settings")}>
               <Settings className="h-4 w-4" />
             </Button>
           </div>
@@ -121,9 +123,9 @@ const ProfilePage = () => {
             <TabsContent value="listings" className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold">My Property Listings</h2>
-                <Button size="sm" className="bg-accent hover:bg-accent/90">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add New
+                <Button size="sm" className="bg-accent hover:bg-accent/90" onClick={() => navigate("/my-listings")}>
+                  <Building2 className="h-4 w-4 mr-1" />
+                  Manage All
                 </Button>
               </div>
 

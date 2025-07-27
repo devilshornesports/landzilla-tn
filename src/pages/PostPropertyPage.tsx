@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Camera, MapPin, Upload, Save } from "lucide-react";
+import { Camera, MapPin, Upload, Save, Plus, Trash2, IndianRupee } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,17 +15,26 @@ const PostPropertyPage = () => {
     title: "",
     description: "",
     district: "",
-    block: "",
-    plotNo: "",
-    area: "",
-    areaUnit: "sqft",
-    price: "",
+    location: "",
     facing: "",
     propertyType: "",
     ownerName: "",
     ownerPhone: "",
     amenities: [] as string[],
   });
+
+  const [blocks, setBlocks] = useState([
+    {
+      id: 1,
+      blockId: "A",
+      blockName: "Block A",
+      totalPlots: 50,
+      area: "",
+      areaUnit: "sqft",
+      pricePerSqft: "",
+      totalPrice: ""
+    }
+  ]);
 
   const districts = [
     "Chennai", "Coimbatore", "Madurai", "Tiruchirappalli", "Salem",
@@ -61,6 +70,34 @@ const PostPropertyPage = () => {
     }));
   };
 
+  const addBlock = () => {
+    const newBlockId = String.fromCharCode(65 + blocks.length); // A, B, C, etc.
+    setBlocks(prev => [...prev, {
+      id: Date.now(),
+      blockId: newBlockId,
+      blockName: `Block ${newBlockId}`,
+      totalPlots: 50,
+      area: "",
+      areaUnit: "sqft",
+      pricePerSqft: "",
+      totalPrice: ""
+    }]);
+  };
+
+  const removeBlock = (blockId: number) => {
+    if (blocks.length > 1) {
+      setBlocks(prev => prev.filter(block => block.id !== blockId));
+    }
+  };
+
+  const updateBlock = (blockId: number, field: string, value: string | number) => {
+    setBlocks(prev => prev.map(block => 
+      block.id === blockId 
+        ? { ...block, [field]: value }
+        : block
+    ));
+  };
+
   const generatePropertyId = () => {
     const date = new Date();
     const year = date.getFullYear();
@@ -79,7 +116,7 @@ const PostPropertyPage = () => {
       description: `Your property ID is ${propertyId}. It will be reviewed and published soon.`,
     });
     
-    console.log("Property submitted:", { ...formData, propertyId });
+    console.log("Property submitted:", { ...formData, blocks, propertyId });
   };
 
   return (
@@ -160,82 +197,13 @@ const PostPropertyPage = () => {
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="block">Block *</Label>
-                <Input
-                  id="block"
-                  placeholder="e.g., A, B, C"
-                  value={formData.block}
-                  onChange={(e) => setFormData(prev => ({ ...prev, block: e.target.value }))}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="plotNo">Plot Number *</Label>
-                <Input
-                  id="plotNo"
-                  placeholder="e.g., 45, 123"
-                  value={formData.plotNo}
-                  onChange={(e) => setFormData(prev => ({ ...prev, plotNo: e.target.value }))}
-                  required
-                />
-              </div>
-            </div>
-
-            <Button variant="outline" className="w-full">
-              <MapPin className="h-4 w-4 mr-2" />
-              Set Location on Map
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Area & Price */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Area & Price</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="area">Area *</Label>
-                <Input
-                  id="area"
-                  type="number"
-                  placeholder="1200"
-                  value={formData.area}
-                  onChange={(e) => setFormData(prev => ({ ...prev, area: e.target.value }))}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="areaUnit">Unit *</Label>
-                <Select
-                  value={formData.areaUnit}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, areaUnit: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {areaUnits.map((unit) => (
-                      <SelectItem key={unit.value} value={unit.value}>
-                        {unit.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
             <div>
-              <Label htmlFor="price">Price (₹) *</Label>
+              <Label htmlFor="location">Full Address *</Label>
               <Input
-                id="price"
-                type="number"
-                placeholder="2500000"
-                value={formData.price}
-                onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+                id="location"
+                placeholder="e.g., Anna Nagar West, Chennai"
+                value={formData.location}
+                onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
                 required
               />
             </div>
@@ -256,6 +224,117 @@ const PostPropertyPage = () => {
                 </SelectContent>
               </Select>
             </div>
+
+            <Button variant="outline" className="w-full">
+              <MapPin className="h-4 w-4 mr-2" />
+              Set Location on Map
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Blocks Configuration */}
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <CardTitle className="text-lg">Blocks & Pricing</CardTitle>
+              <Button onClick={addBlock} size="sm" variant="outline">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Block
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {blocks.map((block, index) => (
+              <div key={block.id} className="border border-border rounded-lg p-4 space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-semibold text-foreground">Block {block.blockId}</h3>
+                  {blocks.length > 1 && (
+                    <Button 
+                      onClick={() => removeBlock(block.id)} 
+                      size="sm" 
+                      variant="ghost"
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Block Name</Label>
+                    <Input
+                      placeholder={`Block ${block.blockId}`}
+                      value={block.blockName}
+                      onChange={(e) => updateBlock(block.id, 'blockName', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label>Total Plots</Label>
+                    <Input
+                      type="number"
+                      placeholder="50"
+                      value={block.totalPlots}
+                      onChange={(e) => updateBlock(block.id, 'totalPlots', parseInt(e.target.value) || 0)}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Area per Plot</Label>
+                    <Input
+                      type="number"
+                      placeholder="1200"
+                      value={block.area}
+                      onChange={(e) => updateBlock(block.id, 'area', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label>Unit</Label>
+                    <Select
+                      value={block.areaUnit}
+                      onValueChange={(value) => updateBlock(block.id, 'areaUnit', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {areaUnits.map((unit) => (
+                          <SelectItem key={unit.value} value={unit.value}>
+                            {unit.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Price per {block.areaUnit} (₹)</Label>
+                    <Input
+                      type="number"
+                      placeholder="2500"
+                      value={block.pricePerSqft}
+                      onChange={(e) => updateBlock(block.id, 'pricePerSqft', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label>Total Price per Plot (₹)</Label>
+                    <div className="flex items-center gap-2">
+                      <IndianRupee className="h-4 w-4 text-accent" />
+                      <span className="text-lg font-semibold text-accent">
+                        {block.area && block.pricePerSqft 
+                          ? (parseInt(block.area) * parseInt(block.pricePerSqft)).toLocaleString('en-IN')
+                          : "0"
+                        }
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
 

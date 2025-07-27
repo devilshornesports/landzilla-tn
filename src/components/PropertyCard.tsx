@@ -2,6 +2,7 @@ import { MapPin, IndianRupee, Eye, Heart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 
 interface PropertyCardProps {
   id: string;
@@ -30,6 +31,7 @@ const PropertyCard = ({
   type,
   onClick,
 }: PropertyCardProps) => {
+  const navigate = useNavigate();
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Available":
@@ -43,8 +45,16 @@ const PropertyCard = ({
     }
   };
 
+  const handleCardClick = () => {
+    if (onClick) {
+      onClick();
+    } else {
+      navigate(`/property/${id}`);
+    }
+  };
+
   return (
-    <div className="property-card" onClick={onClick}>
+    <div className="property-card" onClick={handleCardClick}>
       <div className="relative">
         <img
           src={image}
@@ -93,7 +103,14 @@ const PropertyCard = ({
               {price.toLocaleString('en-IN')}
             </span>
           </div>
-          <Button size="sm" className="bg-accent hover:bg-accent/90 text-white">
+          <Button 
+            size="sm" 
+            className="bg-accent hover:bg-accent/90 text-white"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/property/${id}`);
+            }}
+          >
             <Eye className="h-4 w-4 mr-1" />
             View Details
           </Button>

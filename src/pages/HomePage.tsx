@@ -1,14 +1,17 @@
 import { useState } from "react";
-import { Search, Filter, MapPin, TrendingUp } from "lucide-react";
+import { Search, Filter, MapPin, TrendingUp, Star, Clock, Users, Award } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import PropertyCard from "@/components/PropertyCard";
+import { useNavigate } from "react-router-dom";
 import heroImage from "@/assets/hero-property.jpg";
 import sampleHouse from "@/assets/sample-house.jpg";
 import sampleFarmland from "@/assets/sample-farmland.jpg";
 
 const HomePage = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
 
   const districts = [
@@ -135,30 +138,75 @@ const HomePage = () => {
             <PropertyCard
               key={property.id}
               {...property}
-              onClick={() => console.log("Navigate to property details")}
             />
           ))}
         </div>
       </div>
 
-      {/* Property Types */}
+      {/* Property Categories */}
       <div className="px-4 py-6">
-        <h2 className="text-xl font-semibold text-foreground mb-4">Property Types</h2>
+        <h2 className="text-xl font-semibold text-foreground mb-4">Browse by Category</h2>
         <div className="grid grid-cols-2 gap-4">
           {[
-            { name: "Residential Plots", count: "1,200+", icon: "🏠" },
-            { name: "Agricultural Land", count: "800+", icon: "🌾" },
-            { name: "Commercial Plots", count: "300+", icon: "🏢" },
-            { name: "Villas & Houses", count: "200+", icon: "🏡" },
+            { name: "Residential Plots", count: "1,200+", icon: "🏠", filter: "residential" },
+            { name: "Agricultural Land", count: "800+", icon: "🌾", filter: "agricultural" },
+            { name: "Commercial Plots", count: "300+", icon: "🏢", filter: "commercial" },
+            { name: "Villas & Houses", count: "200+", icon: "🏡", filter: "villa" },
           ].map((type) => (
             <div
               key={type.name}
-              className="property-card p-4 text-center hover:bg-accent/5"
+              className="property-card p-4 text-center hover:bg-accent/5 cursor-pointer"
+              onClick={() => navigate(`/explore?category=${type.filter}`)}
             >
               <div className="text-3xl mb-2">{type.icon}</div>
               <h3 className="font-medium text-foreground">{type.name}</h3>
               <p className="text-sm text-muted-foreground">{type.count} available</p>
             </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Why Choose Us */}
+      <div className="px-4 py-6 bg-muted/30">
+        <h2 className="text-xl font-semibold text-foreground mb-4">Why Choose LandZilla?</h2>
+        <div className="grid grid-cols-2 gap-4">
+          {[
+            { icon: Star, title: "Verified Properties", desc: "All listings verified by our team" },
+            { icon: Clock, title: "Quick Booking", desc: "Book plots in minutes" },
+            { icon: Users, title: "Trusted Sellers", desc: "Connect with verified property owners" },
+            { icon: Award, title: "Best Prices", desc: "Competitive rates across Tamil Nadu" },
+          ].map((feature, index) => (
+            <Card key={index} className="text-center">
+              <CardContent className="pt-4">
+                <feature.icon className="h-8 w-8 text-accent mx-auto mb-2" />
+                <h3 className="font-medium text-foreground text-sm mb-1">{feature.title}</h3>
+                <p className="text-xs text-muted-foreground">{feature.desc}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* Recent Activity */}
+      <div className="px-4 py-6">
+        <h2 className="text-xl font-semibold text-foreground mb-4">Recent Activity</h2>
+        <div className="space-y-3">
+          {[
+            { action: "New listing added", location: "Chennai", time: "2 hours ago" },
+            { action: "Plot booked", location: "Coimbatore", time: "5 hours ago" },
+            { action: "Price updated", location: "Salem", time: "1 day ago" },
+          ].map((activity, index) => (
+            <Card key={index}>
+              <CardContent className="p-3">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{activity.action}</p>
+                    <p className="text-xs text-muted-foreground">{activity.location}</p>
+                  </div>
+                  <span className="text-xs text-muted-foreground">{activity.time}</span>
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </div>
