@@ -51,8 +51,6 @@ const MessagesPage = () => {
   }, [selectedChat, user]);
 
   const fetchConversations = async () => {
-    if (!user) return;
-    
     try {
       // Fetch messages where user is sender or receiver, grouped by other participant
       const { data: messagesData, error } = await supabase
@@ -68,7 +66,7 @@ const MessagesPage = () => {
       
       for (const msg of messagesData || []) {
         const otherParticipantId = msg.sender_id === user.id ? msg.receiver_id : msg.sender_id;
-        const key = `${otherParticipantId}-${msg.property_id || 'general'}`;
+        const key = `${otherParticipantId}-${msg.property_id}`;
         
         if (!conversationMap.has(key)) {
           // Fetch other participant profile
@@ -79,15 +77,11 @@ const MessagesPage = () => {
             .single();
 
           // Fetch property title
-          let propertyData = null;
-          if (msg.property_id) {
-            const { data } = await supabase
-              .from('properties')
-              .select('title')
-              .eq('id', msg.property_id)
-              .single();
-            propertyData = data;
-          }
+          const { data: propertyData } = await supabase
+            .from('properties')
+            .select('title')
+            .eq('id', msg.property_id)
+            .single();
 
           conversationMap.set(key, {
             id: key,
@@ -98,7 +92,7 @@ const MessagesPage = () => {
             time: new Date(msg.created_at).toLocaleTimeString(),
             unread: 0,
             isVerified: profileData?.is_verified || false,
-            propertyId: msg.property_id || null
+            propertyId: msg.property_id
           });
         }
       }
@@ -113,21 +107,14 @@ const MessagesPage = () => {
 
   const fetchMessages = async (conversationId: string) => {
     try {
-      const parts = conversationId.split('-');
-      const otherParticipantId = parts[0];
-      const propertyId = parts[1] === 'general' ? null : parts[1];
+      const [otherParticipantId, propertyId] = conversationId.split('-');
       
-      let query = supabase
+      const { data, error } = await supabase
         .from('messages')
         .select('*')
         .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherParticipantId}),and(sender_id.eq.${otherParticipantId},receiver_id.eq.${user.id})`)
+        .eq('property_id', propertyId)
         .order('created_at', { ascending: true });
-      
-      if (propertyId) {
-        query = query.eq('property_id', propertyId);
-      }
-      
-      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -149,9 +136,7 @@ const MessagesPage = () => {
     if (!message.trim() || !selectedChat) return;
 
     try {
-      const parts = selectedChat.split('-');
-      const otherParticipantId = parts[0];
-      const propertyId = parts[1] === 'general' ? null : parts[1];
+      const [otherParticipantId, propertyId] = selectedChat.split('-');
 
       const { error } = await supabase
         .from('messages')

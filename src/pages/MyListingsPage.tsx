@@ -68,14 +68,11 @@ const MyListingsPage = () => {
   };
 
   const togglePropertyStatus = async (propertyId: string, currentStatus: boolean) => {
-    if (!user) return;
-    
     try {
       const { error } = await supabase
         .from('properties')
         .update({ is_available: !currentStatus })
-        .eq('id', propertyId)
-        .eq('owner_id', user.id); // Ensure only owner can update
+        .eq('id', propertyId);
 
       if (error) throw error;
 
@@ -96,15 +93,12 @@ const MyListingsPage = () => {
 
   const deleteProperty = async (propertyId: string) => {
     if (!confirm('Are you sure you want to delete this property?')) return;
-    
-    if (!user) return;
 
     try {
       const { error } = await supabase
         .from('properties')
         .delete()
-        .eq('id', propertyId)
-        .eq('owner_id', user.id); // Ensure only owner can delete
+        .eq('id', propertyId);
 
       if (error) throw error;
 

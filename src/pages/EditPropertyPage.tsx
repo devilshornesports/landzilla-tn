@@ -122,15 +122,6 @@ const EditPropertyPage = () => {
   const handleImageUpload = async (files: FileList) => {
     if (!user) return;
     
-    if (images.length + files.length > 15) {
-      toast({
-        title: "Too many images",
-        description: "You can upload maximum 15 images",
-        variant: "destructive"
-      });
-      return;
-    }
-    
     const imageUrls: string[] = [];
 
     try {

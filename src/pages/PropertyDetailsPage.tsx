@@ -10,13 +10,9 @@ import { supabase } from "@/integrations/supabase/client";
 import BlockBookingModal from "@/components/BlockBookingModal";
 import BlockDetails from "@/components/BlockDetails";
 import ImageCarousel from "@/components/ImageCarousel";
-
-// Default images from Pexels
-const DEFAULT_PROPERTY_IMAGES = [
-  "https://images.pexels.com/photos/1396122/pexels-photo-1396122.jpeg?auto=compress&cs=tinysrgb&w=800",
-  "https://images.pexels.com/photos/323780/pexels-photo-323780.jpeg?auto=compress&cs=tinysrgb&w=800",
-  "https://images.pexels.com/photos/1115804/pexels-photo-1115804.jpeg?auto=compress&cs=tinysrgb&w=800"
-];
+import heroImage from "@/assets/hero-property.jpg";
+import sampleHouse from "@/assets/sample-house.jpg";
+import sampleFarmland from "@/assets/sample-farmland.jpg";
 
 const PropertyDetailsPage = () => {
   const { id } = useParams();
@@ -184,13 +180,11 @@ const PropertyDetailsPage = () => {
 
     try {
       if (isSaved) {
-        const { error } = await supabase
+        await supabase
           .from('saved_properties')
           .delete()
           .eq('user_id', user.id)
           .eq('property_id', id);
-        
-        if (error) throw error;
         
         setIsSaved(false);
         toast({
@@ -198,14 +192,12 @@ const PropertyDetailsPage = () => {
           description: "Property removed from your saved items"
         });
       } else {
-        const { error } = await supabase
+        await supabase
           .from('saved_properties')
           .insert({
             user_id: user.id,
             property_id: id
           });
-        
-        if (error) throw error;
         
         setIsSaved(true);
         toast({
@@ -286,7 +278,7 @@ const PropertyDetailsPage = () => {
       </div>
 
       {/* Image Carousel */}
-      <ImageCarousel images={property.images && property.images.length > 0 ? property.images : DEFAULT_PROPERTY_IMAGES} />
+      <ImageCarousel images={property.images || [heroImage]} />
 
       {/* Property Info */}
       <div className="p-4 space-y-6">

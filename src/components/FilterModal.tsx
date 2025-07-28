@@ -45,15 +45,6 @@ const FilterModal = ({ isOpen, onClose, onApplyFilters }: FilterModalProps) => {
   };
 
   const handleApplyFilters = () => {
-    // Validate price range
-    if (filters.priceRange[0] > filters.priceRange[1]) {
-      const temp = filters.priceRange[0];
-      setFilters(prev => ({
-        ...prev,
-        priceRange: [filters.priceRange[1], temp]
-      }));
-    }
-    
     onApplyFilters(filters);
     onClose();
   };

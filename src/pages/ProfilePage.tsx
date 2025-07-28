@@ -214,7 +214,7 @@ const ProfilePage = () => {
                         plotNo="N/A"
                         price={property.price}
                         area={property.size_sqft ? `${property.size_sqft} Sqft` : "N/A"}
-                        image={property.images?.[0] || "https://images.pexels.com/photos/1396122/pexels-photo-1396122.jpeg?auto=compress&cs=tinysrgb&w=800"}
+                        image={property.images?.[0] || "/placeholder.svg"}
                         status={property.is_available ? "Available" : "Sold"}
                         type={property.category_id || "Property"}
                       />
@@ -309,7 +309,7 @@ const ProfilePage = () => {
                     plotNo="N/A"
                     price={property.price}
                     area={property.size_sqft ? `${property.size_sqft} Sqft` : "N/A"}
-                    image={property.images?.[0] || "https://images.pexels.com/photos/1396122/pexels-photo-1396122.jpeg?auto=compress&cs=tinysrgb&w=800"}
+                    image={property.images?.[0] || "/placeholder.svg"}
                     status={property.is_available ? "Available" : "Sold"}
                     type="Property"
                   />

@@ -195,14 +195,15 @@ const ExplorePage = () => {
                   key={property.id}
                   id={property.id}
                   title={property.title}
-                  district={property.district || property.location}
+                  district={property.district}
                   block="N/A"
                   plotNo="N/A"
                   price={property.price}
                   area={property.size_sqft ? `${property.size_sqft} Sqft` : "Size not specified"}
-                  image={property.images?.[0] || "https://images.pexels.com/photos/1396122/pexels-photo-1396122.jpeg?auto=compress&cs=tinysrgb&w=800"}
+                  image={property.images?.[0] || "/placeholder.svg"}
                   status={property.is_available ? "Available" : "Booked"}
                   type="Property"
+                  onClick={() => console.log("Navigate to property details")}
                 />
               ))
             )}

@@ -2,9 +2,6 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-// Default placeholder image
-const DEFAULT_IMAGE = "https://images.pexels.com/photos/1396122/pexels-photo-1396122.jpeg?auto=compress&cs=tinysrgb&w=800";
-
 interface ImageCarouselProps {
   images: string[];
 }
@@ -27,10 +24,6 @@ const ImageCarousel = ({ images }: ImageCarouselProps) => {
           src={images[currentIndex]}
           alt={`Property image ${currentIndex + 1}`}
           className="w-full h-full object-cover"
-          onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            target.src = DEFAULT_IMAGE;
-          }}
         />
       </div>
       
