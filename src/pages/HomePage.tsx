@@ -31,12 +31,46 @@ const HomePage = () => {
     fetchProperties();
   }, []);
 
+  useEffect(() => {
+    fetchProperties();
+  }, [searchQuery, selectedCategory, selectedDistrict, priceRange]);
+
   const fetchProperties = async () => {
+    setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('properties')
         .select('*')
-        .eq('is_available', true)
+        .eq('is_available', true);
+
+      // Apply filters
+      if (searchQuery) {
+        query = query.or(`title.ilike.%${searchQuery}%,location.ilike.%${searchQuery}%,district.ilike.%${searchQuery}%`);
+      }
+
+      if (selectedDistrict !== "all-districts") {
+        query = query.eq('district', selectedDistrict);
+      }
+
+      if (selectedCategory !== "all-types") {
+        query = query.eq('property_type', selectedCategory);
+      }
+
+      if (priceRange !== "all-prices") {
+        const [min, max] = priceRange.includes('-') 
+          ? priceRange.split('-').map(p => parseInt(p))
+          : priceRange.includes('+') 
+            ? [parseInt(priceRange.replace('+', '')), 999999999]
+            : [0, 999999999];
+        
+        if (max < 999999999) {
+          query = query.gte('price', min).lte('price', max);
+        } else {
+          query = query.gte('price', min);
+        }
+      }
+
+      const { data, error } = await query
         .limit(6)
         .order('created_at', { ascending: false });
 
@@ -277,8 +311,17 @@ const HomePage = () => {
         isOpen={showFilterModal}
         onClose={() => setShowFilterModal(false)}
         onApplyFilters={(filters) => {
-          console.log("Applied filters:", filters);
-          // Handle filter application logic here
+          // Apply advanced filters
+          setSelectedCategory(filters.propertyType || "all-types");
+          setSelectedDistrict(filters.district || "all-districts");
+          if (filters.priceRange && filters.priceRange.length === 2) {
+            const [min, max] = filters.priceRange;
+            if (min === 0 && max === 10000000) {
+              setPriceRange("all-prices");
+            } else {
+              setPriceRange(`${min}-${max}`);
+            }
+          }
         }}
       />
     </div>

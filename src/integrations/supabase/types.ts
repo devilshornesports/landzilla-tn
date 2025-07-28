@@ -41,6 +41,59 @@ export type Database = {
         }
         Relationships: []
       }
+      blocks: {
+        Row: {
+          area_per_plot: number | null
+          area_unit: string | null
+          available_plots: number | null
+          block_id: string
+          block_name: string
+          created_at: string
+          id: string
+          price_per_unit: number
+          property_id: string
+          total_plots: number
+          total_price_per_plot: number | null
+          updated_at: string
+        }
+        Insert: {
+          area_per_plot?: number | null
+          area_unit?: string | null
+          available_plots?: number | null
+          block_id: string
+          block_name: string
+          created_at?: string
+          id?: string
+          price_per_unit: number
+          property_id: string
+          total_plots?: number
+          total_price_per_plot?: number | null
+          updated_at?: string
+        }
+        Update: {
+          area_per_plot?: number | null
+          area_unit?: string | null
+          available_plots?: number | null
+          block_id?: string
+          block_name?: string
+          created_at?: string
+          id?: string
+          price_per_unit?: number
+          property_id?: string
+          total_plots?: number
+          total_price_per_plot?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocks_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           created_at: string
@@ -269,7 +322,9 @@ export type Database = {
           owner_id: string
           price: number
           price_type: string | null
+          property_type: string | null
           size_sqft: number | null
+          starting_price: number | null
           title: string
           updated_at: string
           view_count: number | null
@@ -292,7 +347,9 @@ export type Database = {
           owner_id: string
           price: number
           price_type?: string | null
+          property_type?: string | null
           size_sqft?: number | null
+          starting_price?: number | null
           title: string
           updated_at?: string
           view_count?: number | null
@@ -315,7 +372,9 @@ export type Database = {
           owner_id?: string
           price?: number
           price_type?: string | null
+          property_type?: string | null
           size_sqft?: number | null
+          starting_price?: number | null
           title?: string
           updated_at?: string
           view_count?: number | null

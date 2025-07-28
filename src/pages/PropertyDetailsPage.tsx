@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import BlockBookingModal from "@/components/BlockBookingModal";
+import BlockDetails from "@/components/BlockDetails";
 import ImageCarousel from "@/components/ImageCarousel";
 import heroImage from "@/assets/hero-property.jpg";
 import sampleHouse from "@/assets/sample-house.jpg";
@@ -298,12 +299,13 @@ const PropertyDetailsPage = () => {
                 <div>
                   <div className="flex items-center gap-1">
                     <IndianRupee className="h-5 w-5 text-accent" />
+                    <span className="text-lg text-muted-foreground">Starting from </span>
                     <span className="text-2xl font-bold text-accent">
-                      {property.price?.toLocaleString('en-IN')}
+                      {property.starting_price?.toLocaleString('en-IN') || property.price?.toLocaleString('en-IN')}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    {property.price_type === 'per_day' ? 'per day' : 'total price'}
+                    per plot
                   </p>
                 </div>
                 <Button 
@@ -369,6 +371,16 @@ const PropertyDetailsPage = () => {
                 Book Now
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Block Details */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Available Blocks</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <BlockDetails property={property} />
           </CardContent>
         </Card>
       </div>

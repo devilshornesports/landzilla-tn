@@ -28,6 +28,8 @@ const PostPropertyPage = () => {
     ownerName: "",
     ownerPhone: "",
     amenities: [] as string[],
+    bedrooms: "",
+    bathrooms: "",
   });
 
   const [blocks, setBlocks] = useState([
@@ -183,25 +185,56 @@ const PostPropertyPage = () => {
       }, 0);
       const avgPrice = totalPrice / blocks.length;
 
+      // Calculate starting price from the lowest priced block
+      const startingPrice = Math.min(...blocks.map(block => {
+        const price = parseFloat(block.pricePerSqft) * parseFloat(block.area);
+        return isNaN(price) ? 0 : price;
+      }));
+
       const propertyData = {
         title: formData.title,
         description: formData.description,
         district: formData.district,
         location: formData.location,
+        property_type: formData.propertyType,
         price: avgPrice,
+        starting_price: startingPrice,
         images: uploadedImages,
         amenities: formData.amenities,
+        bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
+        bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null,
         owner_id: user.id,
         is_available: true,
-        category_id: null, // You can add category selection later
+        category_id: null,
         price_type: 'one_time'
       };
 
-      const { error } = await supabase
+      const { data: propertyInserted, error } = await supabase
         .from('properties')
-        .insert(propertyData);
+        .insert(propertyData)
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Insert blocks data
+      const blocksData = blocks.map(block => ({
+        property_id: propertyInserted.id,
+        block_name: block.blockName,
+        block_id: block.blockId,
+        total_plots: block.totalPlots,
+        area_per_plot: parseFloat(block.area) || 0,
+        area_unit: block.areaUnit,
+        price_per_unit: parseFloat(block.pricePerSqft) || 0,
+        total_price_per_plot: (parseFloat(block.area) || 0) * (parseFloat(block.pricePerSqft) || 0),
+        available_plots: block.totalPlots
+      }));
+
+      const { error: blocksError } = await supabase
+        .from('blocks')
+        .insert(blocksData);
+
+      if (blocksError) throw blocksError;
 
       toast({
         title: "Property Posted Successfully! 🎉",
@@ -220,6 +253,8 @@ const PostPropertyPage = () => {
         ownerName: "",
         ownerPhone: "",
         amenities: [],
+        bedrooms: "",
+        bathrooms: "",
       });
       setBlocks([{
         id: 1,
@@ -284,6 +319,30 @@ const PostPropertyPage = () => {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Conditional fields for residential properties */}
+            {(formData.propertyType === "House" || formData.propertyType === "Apartment" || formData.propertyType === "Villa") && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Bedrooms</Label>
+                  <Input
+                    type="number"
+                    placeholder="Number of bedrooms"
+                    value={formData.bedrooms || ""}
+                    onChange={(e) => setFormData(prev => ({ ...prev, bedrooms: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label>Bathrooms</Label>
+                  <Input
+                    type="number"
+                    placeholder="Number of bathrooms"
+                    value={formData.bathrooms || ""}
+                    onChange={(e) => setFormData(prev => ({ ...prev, bathrooms: e.target.value }))}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Photo Upload - First in Basic Information */}
             <div>

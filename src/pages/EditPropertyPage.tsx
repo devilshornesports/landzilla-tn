@@ -25,14 +25,19 @@ const EditPropertyPage = () => {
     description: "",
     location: "",
     district: "",
+    property_type: "",
     price: "",
     price_type: "per_day",
+    starting_price: "",
     size_sqft: "",
     bedrooms: "",
     bathrooms: "",
     amenities: [] as string[],
     is_available: true,
-    is_featured: false
+    is_featured: false,
+    facing: "",
+    latitude: "",
+    longitude: ""
   });
 
   const [images, setImages] = useState<string[]>([]);
@@ -41,6 +46,13 @@ const EditPropertyPage = () => {
     "Chennai", "Coimbatore", "Madurai", "Tiruchirappalli", "Salem",
     "Tirunelveli", "Erode", "Vellore", "Thoothukudi", "Dindigul"
   ];
+
+  const propertyTypes = [
+    "Residential Plot", "Commercial Plot", "Agricultural Land", 
+    "Villa", "House", "Apartment", "Farmland"
+  ];
+
+  const facingOptions = ["East", "West", "North", "South", "North-East", "North-West", "South-East", "South-West"];
 
   const availableAmenities = [
     "Water Connection", "Electricity", "Road Access", "Security", 
@@ -70,14 +82,19 @@ const EditPropertyPage = () => {
         description: data.description || "",
         location: data.location || "",
         district: data.district || "",
+        property_type: data.property_type || "",
         price: data.price?.toString() || "",
         price_type: data.price_type || "per_day",
+        starting_price: data.starting_price?.toString() || "",
         size_sqft: data.size_sqft?.toString() || "",
         bedrooms: data.bedrooms?.toString() || "",
         bathrooms: data.bathrooms?.toString() || "",
         amenities: data.amenities || [],
         is_available: data.is_available ?? true,
-        is_featured: data.is_featured ?? false
+        is_featured: data.is_featured ?? false,
+        facing: (data as any).facing || "",
+        latitude: data.latitude?.toString() || "",
+        longitude: data.longitude?.toString() || ""
       });
 
       setImages(data.images || []);
@@ -123,8 +140,10 @@ const EditPropertyPage = () => {
           description: formData.description,
           location: formData.location,
           district: formData.district,
+          property_type: formData.property_type,
           price: parseFloat(formData.price),
           price_type: formData.price_type,
+          starting_price: formData.starting_price ? parseFloat(formData.starting_price) : null,
           size_sqft: formData.size_sqft ? parseInt(formData.size_sqft) : null,
           bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
           bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null,
@@ -132,6 +151,9 @@ const EditPropertyPage = () => {
           is_available: formData.is_available,
           is_featured: formData.is_featured,
           images: images,
+          facing: formData.facing,
+          latitude: formData.latitude ? parseFloat(formData.latitude) : null,
+          longitude: formData.longitude ? parseFloat(formData.longitude) : null,
           updated_at: new Date().toISOString()
         })
         .eq('id', id);
@@ -199,6 +221,22 @@ const EditPropertyPage = () => {
             </div>
 
             <div>
+              <Label htmlFor="property_type">Property Type</Label>
+              <Select value={formData.property_type} onValueChange={(value) => handleInputChange('property_type', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select property type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {propertyTypes.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
@@ -235,6 +273,48 @@ const EditPropertyPage = () => {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="facing">Facing Direction</Label>
+                <Select value={formData.facing} onValueChange={(value) => handleInputChange('facing', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select facing" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {facingOptions.map((facing) => (
+                      <SelectItem key={facing} value={facing}>
+                        {facing}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="latitude">Latitude</Label>
+                <Input
+                  id="latitude"
+                  type="number"
+                  step="any"
+                  value={formData.latitude}
+                  onChange={(e) => handleInputChange('latitude', e.target.value)}
+                  placeholder="e.g., 13.0827"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="longitude">Longitude</Label>
+                <Input
+                  id="longitude"
+                  type="number"
+                  step="any"
+                  value={formData.longitude}
+                  onChange={(e) => handleInputChange('longitude', e.target.value)}
+                  placeholder="e.g., 80.2707"
+                />
               </div>
             </div>
           </CardContent>
@@ -275,6 +355,17 @@ const EditPropertyPage = () => {
               </div>
             </div>
 
+            <div>
+              <Label htmlFor="starting_price">Starting Price</Label>
+              <Input
+                id="starting_price"
+                type="number"
+                value={formData.starting_price}
+                onChange={(e) => handleInputChange('starting_price', e.target.value)}
+                placeholder="Enter starting price"
+              />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="size_sqft">Size (Sqft)</Label>
@@ -287,27 +378,32 @@ const EditPropertyPage = () => {
                 />
               </div>
 
-              <div>
-                <Label htmlFor="bedrooms">Bedrooms</Label>
-                <Input
-                  id="bedrooms"
-                  type="number"
-                  value={formData.bedrooms}
-                  onChange={(e) => handleInputChange('bedrooms', e.target.value)}
-                  placeholder="Number of bedrooms"
-                />
-              </div>
+              {/* Show bedrooms/bathrooms only for residential properties */}
+              {(formData.property_type === "House" || formData.property_type === "Apartment" || formData.property_type === "Villa") && (
+                <>
+                  <div>
+                    <Label htmlFor="bedrooms">Bedrooms</Label>
+                    <Input
+                      id="bedrooms"
+                      type="number"
+                      value={formData.bedrooms}
+                      onChange={(e) => handleInputChange('bedrooms', e.target.value)}
+                      placeholder="Number of bedrooms"
+                    />
+                  </div>
 
-              <div>
-                <Label htmlFor="bathrooms">Bathrooms</Label>
-                <Input
-                  id="bathrooms"
-                  type="number"
-                  value={formData.bathrooms}
-                  onChange={(e) => handleInputChange('bathrooms', e.target.value)}
-                  placeholder="Number of bathrooms"
-                />
-              </div>
+                  <div>
+                    <Label htmlFor="bathrooms">Bathrooms</Label>
+                    <Input
+                      id="bathrooms"
+                      type="number"
+                      value={formData.bathrooms}
+                      onChange={(e) => handleInputChange('bathrooms', e.target.value)}
+                      placeholder="Number of bathrooms"
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="flex items-center space-x-2">

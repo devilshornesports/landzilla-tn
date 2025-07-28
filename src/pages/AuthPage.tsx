@@ -223,17 +223,6 @@ const AuthPage = () => {
               </form>
             </TabsContent>
           </Tabs>
-          
-          <div className="mt-4 text-center">
-            <Button 
-              type="button" 
-              variant="outline" 
-              className="w-full" 
-              onClick={handleGoogleSignIn}
-            >
-              Continue with Google
-            </Button>
-          </div>
         </CardContent>
       </Card>
     </div>
