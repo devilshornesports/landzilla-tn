@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, IndianRupee, Calendar, User, Phone, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Block {
+  id: string;
+  block_name: string;
+  block_id: string;
+  total_plots: number;
+  area_per_plot: number;
+  area_unit: string;
+  price_per_unit: number;
+  total_price_per_plot: number;
+  available_plots: number;
+}
 
 interface BlockBookingModalProps {
   isOpen: boolean;
@@ -16,6 +29,8 @@ interface BlockBookingModalProps {
 
 const BlockBookingModal = ({ isOpen, onClose, property }: BlockBookingModalProps) => {
   const { toast } = useToast();
+  const [blocks, setBlocks] = useState<Block[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedBlock, setSelectedBlock] = useState("");
   const [selectedPlot, setSelectedPlot] = useState("");
   const [buyerInfo, setBuyerInfo] = useState({
@@ -25,10 +40,37 @@ const BlockBookingModal = ({ isOpen, onClose, property }: BlockBookingModalProps
     address: ""
   });
 
+  useEffect(() => {
+    if (isOpen && property?.id) {
+      fetchBlocks();
+    }
+  }, [isOpen, property?.id]);
+
+  const fetchBlocks = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('blocks')
+        .select('*')
+        .eq('property_id', property.id)
+        .order('block_id');
+
+      if (error) throw error;
+      setBlocks(data || []);
+    } catch (error) {
+      console.error('Error fetching blocks:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!isOpen) return null;
 
-  const selectedBlockData = property.blocks.find((block: any) => block.blockId === selectedBlock);
-  const availablePlots = selectedBlockData?.plots.filter((plot: any) => plot.status === "Available") || [];
+  const selectedBlockData = blocks.find((block) => block.block_id === selectedBlock);
+  const availablePlots = selectedBlockData ? 
+    Array.from({ length: selectedBlockData.available_plots || selectedBlockData.total_plots }, (_, i) => ({
+      plotNo: i + 1,
+      status: "Available"
+    })) : [];
 
   const handleBooking = () => {
     if (!selectedBlock || !selectedPlot || !buyerInfo.name || !buyerInfo.phone) {
@@ -63,63 +105,88 @@ const BlockBookingModal = ({ isOpen, onClose, property }: BlockBookingModalProps
         </div>
         
         <div className="p-4 space-y-6">
-          {/* Block Selection */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Select Block</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {property.blocks.map((block: any) => (
-                <div 
-                  key={block.blockId}
-                  className={`border rounded-lg p-3 cursor-pointer transition-colors ${
-                    selectedBlock === block.blockId 
-                      ? 'border-accent bg-accent/5' 
-                      : 'border-border hover:bg-muted/50'
-                  }`}
-                  onClick={() => setSelectedBlock(block.blockId)}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <h3 className="font-medium text-foreground">{block.blockName}</h3>
-                      <p className="text-sm text-muted-foreground">{block.area} per plot</p>
-                    </div>
-                    <Badge variant={block.availablePlots > 0 ? "default" : "secondary"}>
-                      {block.availablePlots} Available
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <IndianRupee className="h-4 w-4 text-accent" />
-                    <span className="font-semibold text-accent">
-                      {block.totalPrice.toLocaleString('en-IN')}
-                    </span>
-                  </div>
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin h-6 w-6 border-2 border-accent border-t-transparent rounded-full mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading blocks...</p>
+            </div>
+          ) : blocks.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground mb-4">No blocks available for this property</p>
+              <div className="bg-accent/5 border border-accent/20 rounded-lg p-4">
+                <div className="flex items-center gap-1 justify-center mb-2">
+                  <IndianRupee className="h-5 w-5 text-accent" />
+                  <span className="text-xl font-bold text-accent">
+                    {property.starting_price?.toLocaleString('en-IN') || property.price?.toLocaleString('en-IN')}
+                  </span>
                 </div>
-              ))}
-            </CardContent>
-          </Card>
+                <p className="text-sm text-muted-foreground">Total price for this property</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Block Selection */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Select Block</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {blocks.map((block) => (
+                    <div 
+                      key={block.id}
+                      className={`border rounded-lg p-3 cursor-pointer transition-colors ${
+                        selectedBlock === block.block_id 
+                          ? 'border-accent bg-accent/5' 
+                          : 'border-border hover:bg-muted/50'
+                      }`}
+                      onClick={() => setSelectedBlock(block.block_id)}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h3 className="font-medium text-foreground">{block.block_name}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {block.area_per_plot} {block.area_unit} per plot
+                          </p>
+                        </div>
+                        <Badge variant={(block.available_plots || block.total_plots) > 0 ? "default" : "secondary"}>
+                          {block.available_plots || block.total_plots} Available
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <IndianRupee className="h-4 w-4 text-accent" />
+                        <span className="font-semibold text-accent">
+                          {block.total_price_per_plot?.toLocaleString('en-IN') || 
+                           ((block.area_per_plot || 0) * (block.price_per_unit || 0)).toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
 
-          {/* Plot Selection */}
-          {selectedBlock && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Select Plot</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Select value={selectedPlot} onValueChange={setSelectedPlot}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose plot number" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availablePlots.map((plot: any) => (
-                      <SelectItem key={plot.plotNo} value={plot.plotNo.toString()}>
-                        Plot {plot.plotNo}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </CardContent>
-            </Card>
+              {/* Plot Selection */}
+              {selectedBlock && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Select Plot</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Select value={selectedPlot} onValueChange={setSelectedPlot}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose plot number" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availablePlots.map((plot) => (
+                          <SelectItem key={plot.plotNo} value={plot.plotNo.toString()}>
+                            Plot {plot.plotNo}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </CardContent>
+                </Card>
+              )}
+            </>
           )}
 
           {/* Buyer Information */}
@@ -184,7 +251,7 @@ const BlockBookingModal = ({ isOpen, onClose, property }: BlockBookingModalProps
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Block:</span>
-                  <span className="font-medium">{selectedBlockData?.blockName}</span>
+                  <span className="font-medium">{selectedBlockData?.block_name}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Plot:</span>
@@ -192,14 +259,17 @@ const BlockBookingModal = ({ isOpen, onClose, property }: BlockBookingModalProps
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Area:</span>
-                  <span className="font-medium">{selectedBlockData?.area}</span>
+                  <span className="font-medium">
+                    {selectedBlockData?.area_per_plot} {selectedBlockData?.area_unit}
+                  </span>
                 </div>
                 <div className="flex justify-between border-t border-accent/20 pt-2">
                   <span className="font-semibold">Total Price:</span>
                   <div className="flex items-center gap-1">
                     <IndianRupee className="h-4 w-4 text-accent" />
                     <span className="font-bold text-accent">
-                      {selectedBlockData?.totalPrice.toLocaleString('en-IN')}
+                      {selectedBlockData?.total_price_per_plot?.toLocaleString('en-IN') || 
+                       ((selectedBlockData?.area_per_plot || 0) * (selectedBlockData?.price_per_unit || 0)).toLocaleString('en-IN')}
                     </span>
                   </div>
                 </div>
