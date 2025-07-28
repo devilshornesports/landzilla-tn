@@ -26,25 +26,22 @@ const EditPropertyPage = () => {
     location: "",
     district: "",
     property_type: "",
-    price: "",
-    price_type: "per_day",
-    starting_price: "",
-    size_sqft: "",
     bedrooms: "",
     bathrooms: "",
     amenities: [] as string[],
-    is_available: true,
-    is_featured: false,
     facing: "",
-    latitude: "",
-    longitude: ""
   });
 
   const [images, setImages] = useState<string[]>([]);
 
   const districts = [
-    "Chennai", "Coimbatore", "Madurai", "Tiruchirappalli", "Salem",
-    "Tirunelveli", "Erode", "Vellore", "Thoothukudi", "Dindigul"
+    "Ariyalur", "Chengalpattu", "Chennai", "Coimbatore", "Cuddalore", "Dharmapuri", 
+    "Dindigul", "Erode", "Kallakurichi", "Kanchipuram", "Kanyakumari", "Karur", 
+    "Krishnagiri", "Madurai", "Mayiladuthurai", "Nagapattinam", "Namakkal", 
+    "Nilgiris", "Perambalur", "Pudukkottai", "Ramanathapuram", "Ranipet", 
+    "Salem", "Sivaganga", "Tenkasi", "Thanjavur", "Theni", "Thoothukudi", 
+    "Tiruchirappalli", "Tirunelveli", "Tirupattur", "Tiruppur", "Tiruvallur", 
+    "Tiruvannamalai", "Tiruvarur", "Vellore", "Viluppuram", "Virudhunagar"
   ];
 
   const propertyTypes = [
@@ -55,9 +52,12 @@ const EditPropertyPage = () => {
   const facingOptions = ["East", "West", "North", "South", "North-East", "North-West", "South-East", "South-West"];
 
   const availableAmenities = [
-    "Water Connection", "Electricity", "Road Access", "Security", 
-    "Garden", "Parking", "Swimming Pool", "Gym", "Playground", 
-    "Community Hall", "Power Backup", "Internet"
+    "Water Connection", "Electricity", "Road Access", "Compound Wall",
+    "Security", "Garden", "Parking", "Well", "Bore Well", "Trees",
+    "Swimming Pool", "Gym", "Club House", "Children's Play Area",
+    "CCTV Surveillance", "Intercom", "Lift", "Power Backup",
+    "Waste Management", "Rainwater Harvesting", "Solar Panels",
+    "Jogging Track", "Basketball Court", "Tennis Court", "Badminton Court"
   ];
 
   useEffect(() => {
@@ -83,18 +83,10 @@ const EditPropertyPage = () => {
         location: data.location || "",
         district: data.district || "",
         property_type: data.property_type || "",
-        price: data.price?.toString() || "",
-        price_type: data.price_type || "per_day",
-        starting_price: data.starting_price?.toString() || "",
-        size_sqft: data.size_sqft?.toString() || "",
         bedrooms: data.bedrooms?.toString() || "",
         bathrooms: data.bathrooms?.toString() || "",
         amenities: data.amenities || [],
-        is_available: data.is_available ?? true,
-        is_featured: data.is_featured ?? false,
         facing: (data as any).facing || "",
-        latitude: data.latitude?.toString() || "",
-        longitude: data.longitude?.toString() || ""
       });
 
       setImages(data.images || []);
@@ -127,6 +119,45 @@ const EditPropertyPage = () => {
     }));
   };
 
+  const handleImageUpload = async (files: FileList) => {
+    if (!user) return;
+    
+    const imageUrls: string[] = [];
+
+    try {
+      for (const file of Array.from(files)) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
+        const filePath = `${user.id}/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('property-images')
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data } = supabase.storage
+          .from('property-images')
+          .getPublicUrl(filePath);
+
+        imageUrls.push(data.publicUrl);
+      }
+
+      setImages(prev => [...prev, ...imageUrls]);
+      toast({
+        title: "Images uploaded successfully!",
+        description: `${imageUrls.length} image(s) uploaded.`,
+      });
+    } catch (error) {
+      console.error('Error uploading images:', error);
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload images. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -141,19 +172,10 @@ const EditPropertyPage = () => {
           location: formData.location,
           district: formData.district,
           property_type: formData.property_type,
-          price: parseFloat(formData.price),
-          price_type: formData.price_type,
-          starting_price: formData.starting_price ? parseFloat(formData.starting_price) : null,
-          size_sqft: formData.size_sqft ? parseInt(formData.size_sqft) : null,
           bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
           bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null,
           amenities: formData.amenities,
-          is_available: formData.is_available,
-          is_featured: formData.is_featured,
           images: images,
-          facing: formData.facing,
-          latitude: formData.latitude ? parseFloat(formData.latitude) : null,
-          longitude: formData.longitude ? parseFloat(formData.longitude) : null,
           updated_at: new Date().toISOString()
         })
         .eq('id', id);
@@ -210,18 +232,18 @@ const EditPropertyPage = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="title">Property Title</Label>
+              <Label htmlFor="title">Property Title *</Label>
               <Input
                 id="title"
                 value={formData.title}
                 onChange={(e) => handleInputChange('title', e.target.value)}
-                placeholder="Enter property title"
+                placeholder="e.g., Premium Residential Plot in Anna Nagar"
                 required
               />
             </div>
 
             <div>
-              <Label htmlFor="property_type">Property Type</Label>
+              <Label htmlFor="property_type">Property Type *</Label>
               <Select value={formData.property_type} onValueChange={(value) => handleInputChange('property_type', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select property type" />
@@ -236,215 +258,148 @@ const EditPropertyPage = () => {
               </Select>
             </div>
 
+            {/* Conditional fields for residential properties */}
+            {(formData.property_type === "House" || formData.property_type === "Apartment" || formData.property_type === "Villa") && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Bedrooms</Label>
+                  <Input
+                    type="number"
+                    placeholder="Number of bedrooms"
+                    value={formData.bedrooms || ""}
+                    onChange={(e) => handleInputChange('bedrooms', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label>Bathrooms</Label>
+                  <Input
+                    type="number"
+                    placeholder="Number of bathrooms"
+                    value={formData.bathrooms || ""}
+                    onChange={(e) => handleInputChange('bathrooms', e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Photo Upload */}
+            <div>
+              <Label>Property Photos *</Label>
+              <div className="border-2 border-dashed border-border rounded-xl p-6 text-center">
+                <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground mb-2">Upload up to 15 photos</p>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={(e) => e.target.files && handleImageUpload(e.target.files)}
+                  className="hidden"
+                  id="image-upload"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => document.getElementById('image-upload')?.click()}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Choose Photos
+                </Button>
+                {images.length > 0 && (
+                  <div className="mt-4 grid grid-cols-3 gap-2">
+                    {images.map((url, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={url}
+                          alt={`Property ${index + 1}`}
+                          className="w-full h-20 object-cover rounded"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute top-1 right-1 h-6 w-6 p-0 bg-red-500 hover:bg-red-600 text-white"
+                          onClick={() => setImages(prev => prev.filter((_, i) => i !== index))}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div>
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
                 value={formData.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
-                placeholder="Describe your property"
+                placeholder="Describe your property, its features, and nearby landmarks..."
                 rows={4}
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="location">Location</Label>
-                <Input
-                  id="location"
-                  value={formData.location}
-                  onChange={(e) => handleInputChange('location', e.target.value)}
-                  placeholder="Enter location"
-                  required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="district">District</Label>
-                <Select value={formData.district} onValueChange={(value) => handleInputChange('district', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select district" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {districts.map((district) => (
-                      <SelectItem key={district} value={district}>
-                        {district}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="facing">Facing Direction</Label>
-                <Select value={formData.facing} onValueChange={(value) => handleInputChange('facing', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select facing" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {facingOptions.map((facing) => (
-                      <SelectItem key={facing} value={facing}>
-                        {facing}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="latitude">Latitude</Label>
-                <Input
-                  id="latitude"
-                  type="number"
-                  step="any"
-                  value={formData.latitude}
-                  onChange={(e) => handleInputChange('latitude', e.target.value)}
-                  placeholder="e.g., 13.0827"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="longitude">Longitude</Label>
-                <Input
-                  id="longitude"
-                  type="number"
-                  step="any"
-                  value={formData.longitude}
-                  onChange={(e) => handleInputChange('longitude', e.target.value)}
-                  placeholder="e.g., 80.2707"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Property Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Property Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="price">Price</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  value={formData.price}
-                  onChange={(e) => handleInputChange('price', e.target.value)}
-                  placeholder="Enter price"
-                  required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="price_type">Price Type</Label>
-                <Select value={formData.price_type} onValueChange={(value) => handleInputChange('price_type', value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="per_day">Per Day</SelectItem>
-                    <SelectItem value="total">Total Price</SelectItem>
-                    <SelectItem value="per_month">Per Month</SelectItem>
-                    <SelectItem value="per_year">Per Year</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div>
+              <Label htmlFor="district">District *</Label>
+              <Select value={formData.district} onValueChange={(value) => handleInputChange('district', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select district" />
+                </SelectTrigger>
+                <SelectContent>
+                  {districts.map((district) => (
+                    <SelectItem key={district} value={district}>
+                      {district}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
-              <Label htmlFor="starting_price">Starting Price</Label>
+              <Label htmlFor="location">Full Address *</Label>
               <Input
-                id="starting_price"
-                type="number"
-                value={formData.starting_price}
-                onChange={(e) => handleInputChange('starting_price', e.target.value)}
-                placeholder="Enter starting price"
+                id="location"
+                value={formData.location}
+                onChange={(e) => handleInputChange('location', e.target.value)}
+                placeholder="e.g., Anna Nagar West, Chennai"
+                required
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="size_sqft">Size (Sqft)</Label>
-                <Input
-                  id="size_sqft"
-                  type="number"
-                  value={formData.size_sqft}
-                  onChange={(e) => handleInputChange('size_sqft', e.target.value)}
-                  placeholder="Square feet"
-                />
+            <div>
+              <Label htmlFor="facing">Facing Direction</Label>
+              <Select value={formData.facing} onValueChange={(value) => handleInputChange('facing', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select facing direction" />
+                </SelectTrigger>
+                <SelectContent>
+                  {facingOptions.map((facing) => (
+                    <SelectItem key={facing} value={facing}>
+                      {facing}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Amenities */}
+            <div>
+              <Label>Amenities</Label>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
+                {availableAmenities.map((amenity) => (
+                  <div key={amenity} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={amenity}
+                      checked={formData.amenities.includes(amenity)}
+                      onCheckedChange={() => handleAmenityToggle(amenity)}
+                    />
+                    <Label htmlFor={amenity} className="text-sm">
+                      {amenity}
+                    </Label>
+                  </div>
+                ))}
               </div>
-
-              {/* Show bedrooms/bathrooms only for residential properties */}
-              {(formData.property_type === "House" || formData.property_type === "Apartment" || formData.property_type === "Villa") && (
-                <>
-                  <div>
-                    <Label htmlFor="bedrooms">Bedrooms</Label>
-                    <Input
-                      id="bedrooms"
-                      type="number"
-                      value={formData.bedrooms}
-                      onChange={(e) => handleInputChange('bedrooms', e.target.value)}
-                      placeholder="Number of bedrooms"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="bathrooms">Bathrooms</Label>
-                    <Input
-                      id="bathrooms"
-                      type="number"
-                      value={formData.bathrooms}
-                      onChange={(e) => handleInputChange('bathrooms', e.target.value)}
-                      placeholder="Number of bathrooms"
-                    />
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="is_available"
-                checked={formData.is_available}
-                onCheckedChange={(checked) => handleInputChange('is_available', checked)}
-              />
-              <Label htmlFor="is_available">Property is available</Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="is_featured"
-                checked={formData.is_featured}
-                onCheckedChange={(checked) => handleInputChange('is_featured', checked)}
-              />
-              <Label htmlFor="is_featured">Feature this property</Label>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Amenities */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Amenities</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {availableAmenities.map((amenity) => (
-                <div key={amenity} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={amenity}
-                    checked={formData.amenities.includes(amenity)}
-                    onCheckedChange={() => handleAmenityToggle(amenity)}
-                  />
-                  <Label htmlFor={amenity} className="text-sm">
-                    {amenity}
-                  </Label>
-                </div>
-              ))}
             </div>
           </CardContent>
         </Card>
