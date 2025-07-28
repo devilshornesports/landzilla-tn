@@ -31,8 +31,13 @@ const HomePage = () => {
     fetchProperties();
   }, []);
 
+  // Debounce search to avoid too many API calls
   useEffect(() => {
-    fetchProperties();
+    const timeoutId = setTimeout(() => {
+      fetchProperties();
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
   }, [searchQuery, selectedCategory, selectedDistrict, priceRange]);
 
   const fetchProperties = async () => {
@@ -229,7 +234,7 @@ const HomePage = () => {
                 plotNo="N/A"
                 price={property.price}
                 area={property.size_sqft ? `${property.size_sqft} Sqft` : "N/A"}
-                image={property.images?.[0] || "/placeholder.svg"}
+                image={property.images?.[0] || "https://images.pexels.com/photos/1396122/pexels-photo-1396122.jpeg?auto=compress&cs=tinysrgb&w=800"}
                 status={property.is_available ? "Available" : "Sold"}
                 type={property.category_id || "Property"}
               />

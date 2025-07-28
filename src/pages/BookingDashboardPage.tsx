@@ -90,11 +90,14 @@ const BookingDashboardPage = () => {
   };
 
   const updateBookingStatus = async (bookingId: string, newStatus: string) => {
+    if (!user) return;
+    
     try {
       const { error } = await supabase
         .from('bookings')
         .update({ status: newStatus })
-        .eq('id', bookingId);
+        .eq('id', bookingId)
+        .eq('owner_id', user.id); // Ensure only owner can update
 
       if (error) throw error;
 

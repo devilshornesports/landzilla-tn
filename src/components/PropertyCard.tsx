@@ -8,6 +8,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+// Default placeholder image
+const DEFAULT_IMAGE = "https://images.pexels.com/photos/1396122/pexels-photo-1396122.jpeg?auto=compress&cs=tinysrgb&w=800";
+
 interface PropertyCardProps {
   id: string;
   title: string;
@@ -79,11 +82,13 @@ const PropertyCard = ({
     try {
       if (isSaved) {
         // Remove from saved
-        await supabase
+        const { error } = await supabase
           .from('saved_properties')
           .delete()
           .eq('user_id', user.id)
           .eq('property_id', id);
+        
+        if (error) throw error;
         
         setIsSaved(false);
         toast({
@@ -92,12 +97,14 @@ const PropertyCard = ({
         });
       } else {
         // Add to saved
-        await supabase
+        const { error } = await supabase
           .from('saved_properties')
           .insert({
             user_id: user.id,
             property_id: id
           });
+        
+        if (error) throw error;
         
         setIsSaved(true);
         toast({
@@ -144,6 +151,10 @@ const PropertyCard = ({
           src={image}
           alt={title}
           className="w-full h-48 object-cover"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.src = DEFAULT_IMAGE;
+          }}
         />
         <Badge
           className={cn(

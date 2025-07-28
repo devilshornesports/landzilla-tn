@@ -31,6 +31,17 @@ const AuthPage = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters long");
+      return;
+    }
+    
+    if (!fullName.trim()) {
+      setError("Full name is required");
+      return;
+    }
+    
     setLoading(true);
     setError("");
 
@@ -68,6 +79,12 @@ const AuthPage = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!email.trim() || !password.trim()) {
+      setError("Email and password are required");
+      return;
+    }
+    
     setLoading(true);
     setError("");
 

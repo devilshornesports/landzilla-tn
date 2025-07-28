@@ -82,10 +82,28 @@ const BlockBookingModal = ({ isOpen, onClose, property }: BlockBookingModalProps
       return;
     }
 
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to book properties",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       // Update available plots count
       const selectedBlockData = blocks.find(block => block.block_id === selectedBlock);
       if (selectedBlockData) {
+        if ((selectedBlockData.available_plots || selectedBlockData.total_plots) <= 0) {
+          toast({
+            title: "No plots available",
+            description: "This block has no available plots",
+            variant: "destructive"
+          });
+          return;
+        }
+        
         const newAvailablePlots = (selectedBlockData.available_plots || selectedBlockData.total_plots) - 1;
         
         await supabase

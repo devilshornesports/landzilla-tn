@@ -130,6 +130,15 @@ const PostPropertyPage = () => {
   const handleImageUpload = async (files: FileList) => {
     if (!user) return;
     
+    if (uploadedImages.length + files.length > 15) {
+      toast({
+        title: "Too many images",
+        description: "You can upload maximum 15 images",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setUploading(true);
     const imageUrls: string[] = [];
 
@@ -176,6 +185,24 @@ const PostPropertyPage = () => {
 
   const handleConfirmPost = async () => {
     if (!user) return;
+
+    if (uploadedImages.length === 0) {
+      toast({
+        title: "Images required",
+        description: "Please upload at least one image",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!formData.title || !formData.district || !formData.location || !formData.propertyType) {
+      toast({
+        title: "Missing required fields",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      });
+      return;
+    }
 
     try {
       // Calculate average price from blocks
