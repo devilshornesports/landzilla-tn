@@ -34,6 +34,32 @@ const PropertyDetailsPage = () => {
     }
   }, [id, user]);
 
+  useEffect(() => {
+    if (!property?.id) return;
+
+    // Set up real-time subscription for view count updates
+    const channel = supabase
+      .channel('property-views')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'property_views',
+          filter: `property_id=eq.${property.id}`
+        },
+        () => {
+          // Refetch property to get updated view count
+          fetchProperty();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [property?.id]);
+
   const fetchProperty = async () => {
     try {
       const { data, error } = await supabase

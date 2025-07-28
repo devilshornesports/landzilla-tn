@@ -72,7 +72,7 @@ const BlockBookingModal = ({ isOpen, onClose, property }: BlockBookingModalProps
       status: "Available"
     })) : [];
 
-  const handleBooking = () => {
+  const handleBooking = async () => {
     if (!selectedBlock || !selectedPlot || !buyerInfo.name || !buyerInfo.phone) {
       toast({
         title: "Missing Information",
@@ -82,14 +82,34 @@ const BlockBookingModal = ({ isOpen, onClose, property }: BlockBookingModalProps
       return;
     }
 
-    const bookingId = `BOOK-${Date.now()}`;
-    
-    toast({
-      title: "Booking Confirmed! 🎉",
-      description: `Your booking ID is ${bookingId}. You will receive confirmation details shortly.`,
-    });
+    try {
+      // Update available plots count
+      const selectedBlockData = blocks.find(block => block.block_id === selectedBlock);
+      if (selectedBlockData) {
+        const newAvailablePlots = (selectedBlockData.available_plots || selectedBlockData.total_plots) - 1;
+        
+        await supabase
+          .from('blocks')
+          .update({ available_plots: newAvailablePlots })
+          .eq('id', selectedBlockData.id);
+      }
 
-    onClose();
+      const bookingId = `BOOK-${Date.now()}`;
+      
+      toast({
+        title: "Booking Confirmed! 🎉",
+        description: `Your booking ID is ${bookingId}. Plot availability has been updated.`,
+      });
+
+      onClose();
+    } catch (error) {
+      console.error('Error updating plot availability:', error);
+      toast({
+        title: "Booking Error",
+        description: "There was an issue processing your booking. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (

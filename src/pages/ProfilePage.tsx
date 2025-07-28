@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { User, Settings, Heart, Eye, MessageSquare, Plus, LogOut, Building2 } from "lucide-react";
+import { User, Settings, Heart, Eye, MessageSquare, Plus, LogOut, Building2, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,7 @@ const ProfilePage = () => {
   const [profile, setProfile] = useState<any>(null);
   const [userProperties, setUserProperties] = useState<any[]>([]);
   const [savedProperties, setSavedProperties] = useState<any[]>([]);
+  const [userBookings, setUserBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -70,6 +71,22 @@ const ProfilePage = () => {
           .in('id', propertyIds);
         
         setSavedProperties(savedPropertiesData || []);
+      }
+
+      // Fetch user's bookings (as a renter)
+      const { data: bookingsData, error: bookingsError } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          properties(title, location, images)
+        `)
+        .eq('renter_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (bookingsError) {
+        console.error('Bookings fetch error:', bookingsError);
+      } else {
+        setUserBookings(bookingsData || []);
       }
 
     } catch (error) {
@@ -145,7 +162,7 @@ const ProfilePage = () => {
               <div className="text-xs text-muted-foreground">Messages</div>
             </div>
             <div className="text-center">
-              <div className="text-xl font-bold text-accent">0</div>
+              <div className="text-xl font-bold text-accent">{userBookings.length}</div>
               <div className="text-xs text-muted-foreground">Bookings</div>
             </div>
           </div>
@@ -155,10 +172,11 @@ const ProfilePage = () => {
       {/* Content */}
       <div className="px-4 py-6">
         <Tabs defaultValue={profile?.user_type === "seller" ? "listings" : "saved"} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             {profile?.user_type === "seller" && (
               <TabsTrigger value="listings">My Listings</TabsTrigger>
             )}
+            <TabsTrigger value="bookings">My Bookings</TabsTrigger>
             <TabsTrigger value="saved">Saved</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
           </TabsList>
@@ -214,6 +232,57 @@ const ProfilePage = () => {
               </div>
             </TabsContent>
           )}
+
+          <TabsContent value="bookings" className="space-y-4">
+            <h2 className="text-lg font-semibold">My Bookings</h2>
+            <div className="space-y-4">
+              {userBookings.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No bookings yet</p>
+                  <Button 
+                    className="mt-4" 
+                    onClick={() => navigate("/explore")}
+                  >
+                    Browse Properties
+                  </Button>
+                </div>
+              ) : (
+                userBookings.map((booking) => (
+                  <Card key={booking.id}>
+                    <CardContent className="p-4">
+                      <div className="flex gap-4">
+                        {booking.properties?.images?.[0] && (
+                          <img
+                            src={booking.properties.images[0]}
+                            alt={booking.properties.title}
+                            className="w-20 h-20 rounded-lg object-cover"
+                          />
+                        )}
+                        <div className="flex-1">
+                          <h3 className="font-semibold">{booking.properties?.title}</h3>
+                          <p className="text-sm text-muted-foreground">{booking.properties?.location}</p>
+                          <div className="flex items-center gap-4 mt-2 text-sm">
+                            <span>From: {new Date(booking.start_date).toLocaleDateString()}</span>
+                            <span>To: {new Date(booking.end_date).toLocaleDateString()}</span>
+                          </div>
+                          <div className="flex items-center justify-between mt-2">
+                            <span className="font-bold text-accent">
+                              ₹{booking.total_price?.toLocaleString('en-IN')}
+                            </span>
+                            <Badge variant={booking.status === 'confirmed' ? 'default' : 
+                                           booking.status === 'pending' ? 'secondary' : 'destructive'}>
+                              {booking.status}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </TabsContent>
 
           <TabsContent value="saved" className="space-y-4">
             <h2 className="text-lg font-semibold">Saved Properties</h2>

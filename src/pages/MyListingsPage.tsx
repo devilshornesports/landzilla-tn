@@ -55,7 +55,7 @@ const MyListingsPage = () => {
         .select(`
           *,
           properties!inner(title, location),
-          profiles!bookings_renter_id_fkey(full_name, phone)
+          renter:profiles!inner(full_name, phone)
         `)
         .eq('owner_id', user.id)
         .order('created_at', { ascending: false });
@@ -259,12 +259,12 @@ const MyListingsPage = () => {
                           <div className="flex items-center gap-4 mt-3">
                             <Avatar className="h-8 w-8">
                               <AvatarFallback className="bg-accent text-white text-sm">
-                                {booking.profiles?.full_name?.charAt(0) || 'U'}
+                                {booking.renter?.full_name?.charAt(0) || 'U'}
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="font-medium text-sm">{booking.profiles?.full_name || 'Anonymous'}</p>
-                              <p className="text-muted-foreground text-xs">{booking.profiles?.phone}</p>
+                              <p className="font-medium text-sm">{booking.renter?.full_name || 'Anonymous'}</p>
+                              <p className="text-muted-foreground text-xs">{booking.renter?.phone}</p>
                             </div>
                           </div>
 
@@ -316,12 +316,12 @@ const MyListingsPage = () => {
                       <div className="flex items-center gap-3">
                         <Avatar>
                           <AvatarFallback className="bg-accent text-white">
-                            {booking.profiles?.full_name?.charAt(0) || 'U'}
+                            {booking.renter?.full_name?.charAt(0) || 'U'}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-medium">{booking.profiles?.full_name || 'Anonymous'}</p>
-                          <p className="text-sm text-muted-foreground">{booking.profiles?.phone}</p>
+                          <p className="font-medium">{booking.renter?.full_name || 'Anonymous'}</p>
+                          <p className="text-sm text-muted-foreground">{booking.renter?.phone}</p>
                         </div>
                       </div>
                       <Badge variant={booking.status === 'confirmed' ? 'default' : 'secondary'}>

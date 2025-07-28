@@ -42,7 +42,7 @@ const BookingDashboardPage = () => {
         .from('bookings')
         .select(`
           *,
-          renter:profiles!bookings_renter_id_fkey(full_name, phone, is_verified)
+          renter:profiles!inner(full_name, phone, is_verified)
         `)
         .eq('property_id', id)
         .order('created_at', { ascending: false });
